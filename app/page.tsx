@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 const API = "http://localhost:8000";
 
@@ -79,15 +79,22 @@ const MOCK_SUPPORT_DEALS: SupportDeal[] = [
   { id: 5, client: "Новиков В.С.", executor: "Олег", status: "Выдача ключей", age_days: 1, last_update: "2026-06-23", note: "", is_risk: false },
 ];
 
-const DEPARTMENTS = [
-  { key: "deals", label: "Сделки" },
-  { key: "sales", label: "Продажи" },
-  { key: "support", label: "Сопровождение" },
-  { key: "finance", label: "Финансы" },
-  { key: "team", label: "Команда" },
-  { key: "legal", label: "Юр-риски" },
-  { key: "leads", label: "Лиды" },
+const NAV_ITEMS = [
+  { key: "deals",       label: "Главная",         icon: "⌂"  },
+  { key: "sales",       label: "Продажи",         icon: "↗"  },
+  { key: "support",     label: "Сопровождение",   icon: "✓"  },
+  { key: "reporting",   label: "Отчётность",      icon: "▦"  },
+  { key: "rnp",         label: "Годовой свод РНП",icon: "📋" },
+  { key: "weekly",      label: "По неделям",      icon: "📅" },
+  { key: "brokers",     label: "Расходы брокеров",icon: "💳" },
+  { key: "knowledge",   label: "Обучение",        icon: "📖" },
+  { key: "finance",     label: "Финансы",         icon: "₽"  },
+  { key: "team",        label: "Команда",         icon: "👥" },
+  { key: "legal",       label: "Юр-риски",        icon: "⚖"  },
+  { key: "leads",       label: "Лиды",            icon: "◎"  },
+  { key: "competitors", label: "Конкуренты",      icon: "⊛"  },
 ];
+const DEPARTMENTS = NAV_ITEMS;
 
 const fmt = (n: number) =>
   n >= 1_000_000
@@ -959,6 +966,147 @@ function DealStageGroup({ stage, deals }: { stage: string; deals: RiskDeal[] }) 
   );
 }
 
+// ── Sales Dashboard (Отдел продаж — рейтинг + воронка) ─────────────────────
+type SalesBroker = {
+  rank: number; name: string; leads: number; quals: number; leads12: number;
+  shows: number; meetings: number; deposits: number; deals: number;
+  commission: number; avg_check: number; leads_pct: number; dep_pct: number; tier: string | null;
+};
+type FunnelStage = { stage: string; value: number; conv: number | null };
+type SalesData = {
+  period: string; company_val: number; company_eff: number;
+  funnel: FunnelStage[]; bottleneck: string; brokers: SalesBroker[];
+};
+
+function SalesDashboard() {
+  const [data, setData] = React.useState<SalesData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [view, setView] = React.useState<"funnel" | "brokers">("funnel");
+
+  React.useEffect(() => {
+    setLoading(true);
+    fetch(`${API}/api/sales/rating`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { setError("Ошибка загрузки данных"); setLoading(false); });
+  }, []);
+
+  if (loading) return <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загрузка данных продаж…</div>;
+  if (error || !data) return <div style={{ padding: 40, textAlign: "center", color: "#e53e3e", fontSize: 13 }}>{error}</div>;
+
+  const maxFunnelVal = data.funnel[0]?.value || 1;
+
+  return (
+    <div>
+      {/* Шапка */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#111" }}>РНП · Отдел продаж</div>
+          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Период: {data.period} · Google Sheets</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {(["funnel", "brokers"] as const).map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+              background: view === v ? "#111" : "none", color: view === v ? "#fff" : "#999",
+              border: view === v ? "none" : "1px solid #e0e0e0",
+            }}>{v === "funnel" ? "Воронка" : "Рейтинг брокеров"}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Метрики верхнего уровня */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 28 }}>
+        {[
+          { label: "Вал компании", value: fmt(data.company_val) + " ₽", sub: data.period },
+          { label: "Эффективность", value: fmt(data.company_eff) + " ₽", sub: "вал закрытых сделок" },
+          { label: "Сделок", value: Math.round(data.funnel.find(f => f.stage === "Сделки")?.value || 0).toString(), sub: "закрыто за период" },
+          { label: "Узкое место", value: data.bottleneck, sub: "мин. конверсия", accent: true },
+        ].map((m, i) => (
+          <div key={i} style={{ background: m.accent ? "#fffbeb" : "#fff", border: `1px solid ${m.accent ? "#fde68a" : "#ebebeb"}`, borderRadius: 10, padding: "16px 20px" }}>
+            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
+            <div style={{ fontSize: m.accent ? 16 : 22, fontWeight: 700, color: m.accent ? "#b45309" : "#111", letterSpacing: "-0.5px" }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Воронка */}
+      {view === "funnel" && (
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "24px 28px" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Воронка продаж</div>
+          <div style={{ fontSize: 12, color: "#bbb", marginBottom: 24 }}>Подсвечено узкое место — этап с худшей конверсией</div>
+          {data.funnel.map((stage, i) => {
+            const barW = Math.max((stage.value / maxFunnelVal) * 100, 2);
+            const isBottleneck = stage.stage === data.bottleneck;
+            return (
+              <div key={i} style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                  <div style={{ width: 140, fontSize: 13, color: "#444", flexShrink: 0, textAlign: "right" }}>{stage.stage}</div>
+                  <div style={{ flex: 1, position: "relative", height: 32, background: "#f5f5f5", borderRadius: 6, overflow: "hidden" }}>
+                    <div style={{
+                      position: "absolute", left: 0, top: 0, bottom: 0,
+                      width: `${barW}%`,
+                      background: isBottleneck ? "#f87171" : "linear-gradient(90deg, #818cf8, #6366f1)",
+                      borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 10,
+                    }}>
+                      <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{Math.round(stage.value)}</span>
+                    </div>
+                    {isBottleneck && (
+                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 700, background: "#fde68a", color: "#92400e", borderRadius: 4, padding: "1px 6px" }}>УЗКОЕ МЕСТО</span>
+                    )}
+                  </div>
+                  {stage.conv !== null && (
+                    <div style={{ width: 60, fontSize: 12, color: isBottleneck ? "#e53e3e" : "#999", fontWeight: isBottleneck ? 700 : 400, flexShrink: 0 }}>↓ {stage.conv}%</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Рейтинг брокеров */}
+      {view === "brokers" && (
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead style={{ background: "#fafafa" }}>
+              <tr>
+                {["#", "Брокер", "Лиды", "Квалы", "Показы", "Встречи", "Задатки", "Сделки", "Вал", "Ср. чек"].map(h => (
+                  <th key={h} style={{ padding: "10px 12px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: h === "#" || h === "Брокер" ? "left" : "right", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.brokers.map((b, i) => {
+                const isTop3 = b.rank <= 3;
+                const rankColor = b.rank === 1 ? "#f59e0b" : b.rank === 2 ? "#9ca3af" : b.rank === 3 ? "#c2714f" : "#bbb";
+                return (
+                  <tr key={i}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: isTop3 ? rankColor : "transparent", color: isTop3 ? "#fff" : "#bbb", fontSize: 12, fontWeight: 700 }}>{b.rank}</span>
+                    </td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", fontWeight: 500, fontSize: 13 }}>{b.name}</td>
+                    {[b.leads, b.quals, b.shows, b.meetings, Math.round(b.deposits)].map((v, j) => (
+                      <td key={j} style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, color: "#555" }}>{v}</td>
+                    ))}
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, color: "#555" }}>{Math.round(b.deals)}</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, fontWeight: b.rank <= 3 ? 600 : 400, color: b.rank === 1 ? "#f59e0b" : "#111" }}>{fmt(b.commission)} ₽</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 12, color: "#999" }}>{fmt(b.avg_check)} ₽</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sales Table (Отдел продаж — Битрикс) ───────────────────────────────────
 function SalesTable({ deals, loading, error, onRefresh }: { deals: RiskDeal[]; loading: boolean; error: string | null; onRefresh: () => void }) {
   const thStyle: React.CSSProperties = { padding: "10px 14px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap" };
@@ -1136,6 +1284,176 @@ function SupportTable() {
   );
 }
 
+// ── Team Section ────────────────────────────────────────────────────────────
+function TeamSection() {
+  const [data, setData] = React.useState<{ period: string; total_brokers: number; brokers: any[] } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    fetch(`${API}/api/sales/team`).then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+  const medal = (r: number) => r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : String(r);
+  if (loading) return <div style={{ color: "#bbb", padding: 40, textAlign: "center" }}>Загрузка…</div>;
+  if (!data) return <div style={{ color: "#e53e3e", padding: 40, textAlign: "center" }}>Ошибка загрузки</div>;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Команда брокеров</h2>
+        <span style={{ fontSize: 12, color: "#999" }}>{data.period} · {data.total_brokers} брокеров</span>
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "#fafafa", borderBottom: "1px solid #ebebeb" }}>
+              {["#", "Брокер", "Лиды", "Квалы", "Сделки", "Комиссия", "Ср. чек", "В работе"].map(h => (
+                <th key={h} style={{ padding: "10px 14px", textAlign: h === "#" || h === "В работе" ? "center" : "left", fontWeight: 600, color: "#555", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.4px" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.brokers.map((b: any, i: number) => (
+              <tr key={b.name} style={{ borderBottom: i < data.brokers.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+                <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>{medal(b.rank)}</td>
+                <td style={{ padding: "10px 14px", fontWeight: 500 }}>{b.name}{b.tier ? <span style={{ marginLeft: 6, fontSize: 10, color: "#999", background: "#f5f5f5", borderRadius: 4, padding: "1px 5px" }}>{b.tier}</span> : null}</td>
+                <td style={{ padding: "10px 14px" }}>{b.leads}</td>
+                <td style={{ padding: "10px 14px" }}>{b.quals}</td>
+                <td style={{ padding: "10px 14px", fontWeight: 500 }}>{b.deals}</td>
+                <td style={{ padding: "10px 14px" }}>{b.commission > 0 ? `${fmt(b.commission)} ₽` : "—"}</td>
+                <td style={{ padding: "10px 14px", color: "#888" }}>{b.avg_check > 0 ? `${fmt(b.avg_check)} ₽` : "—"}</td>
+                <td style={{ padding: "10px 14px", textAlign: "center", color: b.open_deals > 0 ? "#5b4ff5" : "#bbb", fontWeight: b.open_deals > 0 ? 600 : 400 }}>{b.open_deals > 0 ? b.open_deals : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Broker Costs Section ─────────────────────────────────────────────────────
+function BrokerCostsSection() {
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    fetch(`${API}/api/sales/broker-costs`).then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+  if (loading) return <div style={{ color: "#bbb", padding: 40, textAlign: "center" }}>Загрузка…</div>;
+  if (!data) return <div style={{ color: "#e53e3e", padding: 40, textAlign: "center" }}>Ошибка загрузки</div>;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Расходы брокеров</h2>
+        <span style={{ fontSize: 12, color: "#999" }}>{data.period}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
+        {[
+          { label: "Выплачено брокерам", value: `${fmt(data.total_paid)} ₽`, sub: "фактически" },
+          { label: "Расходы (качество+тех)", value: `${fmt(data.total_cost)} ₽`, sub: "доп. затраты" },
+          { label: "Комиссионный доход", value: `${fmt(data.total_commission)} ₽`, sub: "агентские" },
+          { label: "ROI", value: `${data.roi > 0 ? "+" : ""}${data.roi}%`, sub: "рентабельность", accent: data.roi > 0 },
+        ].map(c => (
+          <div key={c.label} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: (c as any).accent ? "#22c55e" : "#111", letterSpacing: "-0.5px" }}>{c.value}</div>
+            <div style={{ fontSize: 11, color: "#bbb", marginTop: 3 }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: "#fafafa", borderBottom: "1px solid #ebebeb" }}>
+              {["#", "Брокер", "Сделки", "Комиссия", "Выплачено", "Расходы", "% от KV", "Прогноз"].map(h => (
+                <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, color: "#555", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.4px" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.brokers.map((b: any, i: number) => (
+              <tr key={b.name} style={{ borderBottom: i < data.brokers.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+                <td style={{ padding: "8px 12px", color: "#999" }}>{b.rank}</td>
+                <td style={{ padding: "8px 12px", fontWeight: 500 }}>{b.name}</td>
+                <td style={{ padding: "8px 12px" }}>{b.deals}</td>
+                <td style={{ padding: "8px 12px" }}>{b.commission > 0 ? `${fmt(b.commission)} ₽` : "—"}</td>
+                <td style={{ padding: "8px 12px" }}>{b.paid_out > 0 ? `${fmt(b.paid_out)} ₽` : "—"}</td>
+                <td style={{ padding: "8px 12px", color: "#e53e3e" }}>{b.cost_total > 0 ? `${fmt(b.cost_total)} ₽` : "—"}</td>
+                <td style={{ padding: "8px 12px" }}>{b.broker_pct > 0 ? `${b.broker_pct}%` : "—"}</td>
+                <td style={{ padding: "8px 12px", color: "#5b4ff5" }}>{b.forecast_eff > 0 ? `${fmt(b.forecast_eff)} ₽` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Reporting Section ────────────────────────────────────────────────────────
+function ReportingSection() {
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    fetch(`${API}/api/sales/rating`).then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+  if (loading) return <div style={{ color: "#bbb", padding: 40, textAlign: "center" }}>Загрузка…</div>;
+  if (!data) return <div style={{ color: "#e53e3e", padding: 40, textAlign: "center" }}>Ошибка загрузки</div>;
+  const total = data.brokers.reduce((s: number, b: any) => s + b.commission, 0);
+  const totalDeals = data.brokers.reduce((s: number, b: any) => s + b.deals, 0);
+  const topBroker = data.brokers[0]?.name || "—";
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Отчётность</h2>
+        <span style={{ fontSize: 12, color: "#999" }}>{data.period}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
+          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>Оборот компании</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px" }}>{fmt(data.company_val)} ₽</div>
+          <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>объём сделок</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
+          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>Эффективный доход</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#22c55e" }}>{fmt(data.company_eff)} ₽</div>
+          <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>комиссия за период</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
+          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>Брокерских комиссий</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px" }}>{fmt(total)} ₽</div>
+          <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>всего по {totalDeals} сделкам</div>
+        </div>
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: "#333" }}>Топ-5 брокеров по комиссии</div>
+        {data.brokers.slice(0, 5).map((b: any, i: number) => {
+          const pct = total > 0 ? Math.round(b.commission / total * 100) : 0;
+          return (
+            <div key={b.name} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                <span>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`} {b.name}</span>
+                <span style={{ color: "#5b4ff5", fontWeight: 600 }}>{b.commission > 0 ? `${fmt(b.commission)} ₽` : "—"} <span style={{ color: "#bbb", fontWeight: 400 }}>({pct}%)</span></span>
+              </div>
+              <div style={{ height: 6, background: "#f0f0f0", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: i === 0 ? "#5b4ff5" : "#a5b4fc", borderRadius: 3 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Placeholder Section ──────────────────────────────────────────────────────
+function PlaceholderSection({ label }: { label: string }) {
+  return (
+    <div style={{ textAlign: "center", padding: "80px 24px", color: "#bbb" }}>
+      <div style={{ fontSize: 36, marginBottom: 12 }}>🚧</div>
+      <div style={{ fontSize: 16, fontWeight: 500, color: "#999", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 13 }}>Раздел в разработке</div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 // ── New Direction Modal ──────────────────────────────────────────────────────
 function NewDirectionModal({ onSave, onClose }: { onSave: (d: Direction) => void; onClose: () => void }) {
@@ -1241,6 +1559,75 @@ function RecurringDeleteModal({ taskTitle, onSelect, onClose }: {
             Отмена
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Learning Panel ────────────────────────────────────────────────────────────
+const LEARNING_SECTIONS = [
+  { id: "sales",    title: "Продажи",           desc: "Техники продаж, работа с возражениями, скрипты",    icon: "↗", color: "#1A6B52", materials: 0 },
+  { id: "marketing",title: "Маркетинг",         desc: "Продвижение, реклама, аналитика",                   icon: "◎", color: "#2563eb", materials: 0 },
+  { id: "team",     title: "Управление командой", desc: "Лидерство, мотивация, делегирование",             icon: "👥", color: "#d97706", materials: 0 },
+  { id: "product",  title: "Продукт",            desc: "Знание объектов, условия, застройщики",            icon: "⌂", color: "#7c3aed", materials: 0 },
+  { id: "legal",    title: "Юридическая база",   desc: "Договоры, ипотека, документация",                  icon: "⚖", color: "#e53e3e", materials: 0 },
+];
+
+function LearningPanel() {
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  if (activeSection) {
+    const section = LEARNING_SECTIONS.find(s => s.id === activeSection)!;
+    return (
+      <div>
+        <button
+          onClick={() => setActiveSection(null)}
+          style={{ marginBottom: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, display: "flex", alignItems: "center", gap: 6, padding: 0, fontFamily: "inherit" }}
+        >
+          ← Все разделы
+        </button>
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 16, padding: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>{section.icon}</span>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "#111" }}>{section.title}</h2>
+          </div>
+          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 32 }}>{section.desc}</p>
+          <div style={{ textAlign: "center", padding: "48px 0", color: "#9ca3af", fontSize: 14 }}>
+            Материалы появятся здесь после загрузки контента
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#111" }}>Обучение</h2>
+        <p style={{ margin: "4px 0 0", color: "#6b7280", fontSize: 13 }}>Учебные материалы для команды</p>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+        {LEARNING_SECTIONS.map(section => (
+          <button
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 14, padding: "20px 20px 18px", textAlign: "left", cursor: "pointer", transition: "border-color 0.15s", fontFamily: "inherit" }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = section.color)}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "#ebebeb")}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontSize: 20 }}>{section.icon}</span>
+              <span style={{ fontSize: 11, color: "#9ca3af", background: "#f5f5f5", borderRadius: 6, padding: "2px 8px" }}>
+                {section.materials === 0 ? "Скоро" : `${section.materials} материалов`}
+              </span>
+            </div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#111", marginBottom: 4 }}>{section.title}</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>{section.desc}</div>
+            <div style={{ marginTop: 14, height: 3, background: "#f0f0f0", borderRadius: 2 }}>
+              <div style={{ height: "100%", width: "0%", background: section.color, borderRadius: 2 }} />
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -1413,23 +1800,53 @@ export default function Dashboard() {
   const overdue = tasks.filter(t => t.deadline && t.deadline < today).length;
   const riskMoney = riskDeals.reduce((s, d) => s + (d.commission || 0), 0);
   return (
-    <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "'Inter', -apple-system, sans-serif", color: "#111" }}>
+    <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "'Inter', -apple-system, sans-serif", color: "#111", display: "flex" }}>
 
-      <header style={{ background: "#fff", borderBottom: "1px solid #ebebeb", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
-        <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.3px" }}>Oazis Estate</span>
-        <span style={{ fontSize: 13, color: "#999" }}>{dateLabel}</span>
-      </header>
+      {/* ── Sidebar ── */}
+      <aside style={{ width: 220, minHeight: "100vh", background: "#fff", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
+        {/* Logo */}
+        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>O</div>
+            <div style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.3px" }}>OazisEstate</div>
+          </div>
+        </div>
 
-      <div style={{ background: "#fff", borderBottom: "1px solid #ebebeb", padding: "0 32px", display: "flex", gap: 0 }}>
-        {DEPARTMENTS.map(dep => (
-          <button key={dep.key} onClick={() => setActiveTab(dep.key)}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "14px 18px", fontSize: 13, fontWeight: 500, color: activeTab === dep.key ? "#111" : "#999", borderBottom: activeTab === dep.key ? "2px solid #111" : "2px solid transparent", fontFamily: "inherit" }}>
-            {dep.label}
-          </button>
-        ))}
-      </div>
+        {/* Nav */}
+        <nav style={{ padding: "12px 8px", flex: 1 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.8px", padding: "4px 12px 8px" }}>Кабинет</div>
+          {NAV_ITEMS.map(item => {
+            const active = activeTab === item.key;
+            return (
+              <button key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%",
+                  padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+                  background: active ? "#f0f0ff" : "none", fontFamily: "inherit",
+                  color: active ? "#5b4ff5" : "#555",
+                  fontWeight: active ? 600 : 400, fontSize: 13, textAlign: "left", marginBottom: 2,
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#f8f8f8"; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = "none"; }}
+              >
+                <span style={{ fontSize: 14, width: 18, textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-      <main style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px" }}>
+        {/* Bottom date */}
+        <div style={{ padding: "12px 20px", borderTop: "1px solid #f0f0f0" }}>
+          <div style={{ fontSize: 11, color: "#bbb" }}>{dateLabel}</div>
+        </div>
+      </aside>
+
+      {/* ── Main content ── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
 
         {activeTab === "deals" && (
           <>
@@ -1562,24 +1979,29 @@ export default function Dashboard() {
         )}
 
         {activeTab === "sales" && (
-          <SalesTable deals={riskDeals} loading={dealsLoading} error={dealsError} onRefresh={fetchDeals} />
+          <SalesDashboard />
         )}
 
         {activeTab === "support" && (
           <SupportTable />
         )}
 
-        {activeTab !== "deals" && activeTab !== "sales" && activeTab !== "support" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 32, height: 4, background: "#f0f0f0", borderRadius: 4 }} />
-              </div>
-            ))}
-          </div>
+        {activeTab === "knowledge" && (
+          <LearningPanel />
         )}
 
+        {activeTab === "team" && <TeamSection />}
+        {activeTab === "brokers" && <BrokerCostsSection />}
+        {activeTab === "reporting" && <ReportingSection />}
+        {activeTab === "rnp" && <ReportingSection />}
+        {activeTab === "leads" && <SalesDashboard />}
+        {activeTab === "weekly" && <PlaceholderSection label="По неделям" />}
+        {activeTab === "finance" && <PlaceholderSection label="Финансы" />}
+        {activeTab === "legal" && <PlaceholderSection label="Юр-риски" />}
+        {activeTab === "competitors" && <PlaceholderSection label="Конкуренты" />}
+
       </main>
+      </div>{/* end main content */}
       {recurringDelete && (
         <RecurringDeleteModal
           taskTitle={recurringDelete.task.title}
