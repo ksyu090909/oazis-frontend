@@ -60,6 +60,10 @@ type RiskDeal = {
   url: string;
 };
 
+type DealStage = { id: string; name: string };
+type DealCategory = { id: number; name: string; stages: DealStage[] };
+type DealsMeta = { categories: DealCategory[] };
+
 type SupportDeal = {
   id: number;
   client: string;
@@ -3594,6 +3598,179 @@ function LearningPanel() {
               </button>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Deals Section (two tabs + cascading filters) ────────────────────────────
+function DealsSection() {
+  const [tab, setTab] = React.useState<"stuck" | "all">("stuck");
+  const [meta, setMeta] = React.useState<DealsMeta | null>(null);
+  const [metaLoading, setMetaLoading] = React.useState(true);
+  const [selectedCategory, setSelectedCategory] = React.useState<string>("");
+  const [selectedStage, setSelectedStage] = React.useState<string>("");
+  const [deals, setDeals] = React.useState<RiskDeal[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
+  // Load meta once
+  React.useEffect(() => {
+    setMetaLoading(true);
+    fetch(`${API}/api/deals/meta`)
+      .then(r => r.json())
+      .then(d => setMeta(d))
+      .catch(() => setMeta(null))
+      .finally(() => setMetaLoading(false));
+  }, []);
+
+  // Reset stage when category changes
+  const handleCategoryChange = (catId: string) => {
+    setSelectedCategory(catId);
+    setSelectedStage("");
+  };
+
+  // Load deals when tab or filters change
+  React.useEffect(() => {
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set("category_id", selectedCategory);
+    if (selectedStage) params.set("stage_id", selectedStage);
+    if (tab === "stuck") params.set("min_age", "14");
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+
+    fetch(`${API}/api/deals/list?${params.toString()}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error("server"); return r.json(); })
+      .then(d => setDeals(Array.isArray(d) ? d : []))
+      .catch((e: unknown) => setError(e instanceof Error && e.name === "AbortError" ? "Превышено время ожидания Bitrix" : "Нет соединения с сервером"))
+      .finally(() => { clearTimeout(timer); setLoading(false); });
+
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [tab, selectedCategory, selectedStage, refreshKey]);
+
+  // Available stages for selected category
+  const availableStages: DealStage[] = React.useMemo(() => {
+    if (!meta || !selectedCategory) return [];
+    const cat = meta.categories.find(c => String(c.id) === selectedCategory);
+    return cat ? cat.stages : [];
+  }, [meta, selectedCategory]);
+
+  const activeDeals = deals.filter(d => !d.is_fired);
+  const firedDeals = deals.filter(d => d.is_fired);
+  const byStage: Record<string, RiskDeal[]> = {};
+  for (const d of activeDeals) {
+    if (!byStage[d.stage]) byStage[d.stage] = [];
+    byStage[d.stage].push(d);
+  }
+  const stages = Object.keys(byStage).sort((a, b) => {
+    const ai = STAGE_ORDER.indexOf(a);
+    const bi = STAGE_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  const selectStyle: React.CSSProperties = {
+    padding: "5px 10px", borderRadius: 7, border: "1px solid #e0e0e0",
+    fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#333",
+    cursor: "pointer", outline: "none", minWidth: 130,
+  };
+
+  return (
+    <div>
+      {/* Header with tabs and filters */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {(["stuck", "all"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+              cursor: "pointer", fontFamily: "inherit", border: "1px solid",
+              borderColor: tab === t ? "#111" : "#e0e0e0",
+              background: tab === t ? "#111" : "#fff",
+              color: tab === t ? "#fff" : "#666",
+            }}>
+              {t === "stuck" ? "Зависшие" : "Все сделки"}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select
+            value={selectedCategory}
+            onChange={e => handleCategoryChange(e.target.value)}
+            style={selectStyle}
+            disabled={metaLoading}
+          >
+            <option value="">Все воронки</option>
+            {(meta?.categories || []).map(cat => (
+              <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedStage}
+            onChange={e => setSelectedStage(e.target.value)}
+            style={selectStyle}
+            disabled={!selectedCategory || metaLoading}
+          >
+            <option value="">Все стадии</option>
+            {availableStages.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => { setSelectedCategory(""); setSelectedStage(""); }}
+            style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+          >
+            сбросить
+          </button>
+          <button
+            onClick={() => setRefreshKey(k => k + 1)}
+            style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            ↻ обновить
+          </button>
+        </div>
+      </div>
+
+      {/* Deals list */}
+      {loading ? (
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 28, textAlign: "center", color: "#bbb", fontSize: 13, marginBottom: 32 }}>
+          Загрузка из Bitrix…
+        </div>
+      ) : error ? (
+        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 24, textAlign: "center", fontSize: 13, marginBottom: 32 }}>
+          <div style={{ color: "#e53e3e", marginBottom: 8 }}>{error}</div>
+          <button onClick={() => setRefreshKey(k => k + 1)} style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+            Попробовать снова
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 32 }}>
+          {activeDeals.length === 0 && firedDeals.length === 0 && (
+            <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 28, textAlign: "center", color: "#bbb", fontSize: 13 }}>
+              {tab === "stuck" ? "Зависших сделок нет" : "Сделок не найдено"}
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(Math.max(stages.length, 1), 3)}, 1fr)`, gap: 10, marginBottom: firedDeals.length > 0 ? 10 : 0 }}>
+            {stages.map(stage => (
+              <DealStageGroup key={stage} stage={stage} deals={byStage[stage]} />
+            ))}
+          </div>
+          {firedDeals.length > 0 && (
+            <div style={{ background: "#fff", border: "1px solid #fdd", borderRadius: 12, overflow: "hidden", marginTop: 6 }}>
+              <div style={{ padding: "13px 20px", background: "#fff5f5", borderBottom: "1px solid #fdd", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#c53030", flex: 1 }}>Сделки уволенных сотрудников</span>
+                <span style={{ fontSize: 11, color: "#e53e3e", background: "#fed7d7", borderRadius: 10, padding: "2px 8px" }}>{firedDeals.length}</span>
+                <span style={{ fontSize: 12, color: "#fc8181" }}>требуют переназначения</span>
+              </div>
+              {firedDeals.map((d, i) => <DealRow key={d.url} d={d} last={i === firedDeals.length - 1} />)}
+            </div>
+          )}
         </div>
       )}
     </div>
