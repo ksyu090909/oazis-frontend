@@ -84,7 +84,6 @@ const NAV_ITEMS = [
   { key: "deals",       label: "Главная",         icon: "⌂"  },
   { key: "sales",       label: "Отдел продаж",    icon: "↗"  },
   { key: "support",     label: "Сопровождение",   icon: "✓"  },
-  { key: "reporting",   label: "Эффективность",   icon: "▦"  },
   { key: "rnp",         label: "Эффективность компании", icon: "📋" },
   { key: "weekly",      label: "HR",              icon: "📅" },
   { key: "knowledge",   label: "Обучение",        icon: "📖" },
@@ -1067,31 +1066,31 @@ function SalesDashboard() {
 
       {/* Воронка */}
       {view === "funnel" && (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "24px 28px" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Воронка продаж</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginBottom: 24 }}>Подсвечено узкое место — этап с худшей конверсией</div>
+        <div style={{ background: "#f0ebe4", border: "1px solid #ddd5c8", borderRadius: 12, padding: "24px 28px" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: "#3b1f10" }}>Воронка продаж</div>
+          <div style={{ fontSize: 12, color: "#9c8474", marginBottom: 24 }}>Подсвечено узкое место — этап с худшей конверсией</div>
           {data.funnel.map((stage, i) => {
             const barW = Math.max((stage.value / maxFunnelVal) * 100, 2);
             const isBottleneck = stage.stage === data.bottleneck;
             return (
               <div key={i} style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-                  <div style={{ width: 140, fontSize: 13, color: "#444", flexShrink: 0, textAlign: "right" }}>{stage.stage}</div>
-                  <div style={{ flex: 1, position: "relative", height: 32, background: "#f5f5f5", borderRadius: 6, overflow: "hidden" }}>
+                  <div style={{ width: 140, fontSize: 13, color: "#6b5040", flexShrink: 0, textAlign: "right" }}>{stage.stage}</div>
+                  <div style={{ flex: 1, position: "relative", height: 32, background: "#ddd5c8", borderRadius: 6, overflow: "hidden" }}>
                     <div style={{
                       position: "absolute", left: 0, top: 0, bottom: 0,
                       width: `${barW}%`,
-                      background: isBottleneck ? "#f87171" : "linear-gradient(90deg, #818cf8, #6366f1)",
+                      background: isBottleneck ? "#c9883a" : "#5c2d1a",
                       borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 10,
                     }}>
                       <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{Math.round(stage.value)}</span>
                     </div>
                     {isBottleneck && (
-                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 700, background: "#fde68a", color: "#92400e", borderRadius: 4, padding: "1px 6px" }}>УЗКОЕ МЕСТО</span>
+                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 700, background: "#c9883a", color: "#fff3e6", borderRadius: 4, padding: "2px 7px" }}>УЗКОЕ МЕСТО</span>
                     )}
                   </div>
                   {stage.conv !== null && (
-                    <div style={{ width: 60, fontSize: 12, color: isBottleneck ? "#e53e3e" : "#999", fontWeight: isBottleneck ? 700 : 400, flexShrink: 0 }}>↓ {stage.conv}%</div>
+                    <div style={{ width: 60, fontSize: 12, color: isBottleneck ? "#a0522d" : "#b09a89", fontWeight: isBottleneck ? 600 : 400, flexShrink: 0 }}>↓ {stage.conv}%</div>
                   )}
                 </div>
               </div>
@@ -3960,7 +3959,6 @@ export default function Dashboard() {
 
         {activeTab === "team" && <TeamSection />}
         {activeTab === "brokers" && <PlaceholderSection label="Расходы компании" />}
-        {activeTab === "reporting" && <ReportingSection />}
         {activeTab === "rnp" && <RnpEfficiencySection />}
 
         {activeTab === "weekly" && <HRDashboard />}
