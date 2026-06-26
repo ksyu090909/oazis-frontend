@@ -3604,6 +3604,12 @@ function LearningPanel() {
   );
 }
 
+const DEAL_SELECT_STYLE: React.CSSProperties = {
+  padding: "5px 10px", borderRadius: 7, border: "1px solid #e0e0e0",
+  fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#333",
+  cursor: "pointer", outline: "none", minWidth: 130,
+};
+
 // ── Deals Section (two tabs + cascading filters) ────────────────────────────
 function DealsSection() {
   const [tab, setTab] = React.useState<"stuck" | "all">("stuck");
@@ -3676,12 +3682,6 @@ function DealsSection() {
     return ai - bi;
   });
 
-  const selectStyle: React.CSSProperties = {
-    padding: "5px 10px", borderRadius: 7, border: "1px solid #e0e0e0",
-    fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#333",
-    cursor: "pointer", outline: "none", minWidth: 130,
-  };
-
   return (
     <div>
       {/* Header with tabs and filters */}
@@ -3703,7 +3703,7 @@ function DealsSection() {
           <select
             value={selectedCategory}
             onChange={e => handleCategoryChange(e.target.value)}
-            style={selectStyle}
+            style={DEAL_SELECT_STYLE}
             disabled={metaLoading}
           >
             <option value="">Все воронки</option>
@@ -3714,7 +3714,7 @@ function DealsSection() {
           <select
             value={selectedStage}
             onChange={e => setSelectedStage(e.target.value)}
-            style={selectStyle}
+            style={DEAL_SELECT_STYLE}
             disabled={!selectedCategory || metaLoading}
           >
             <option value="">Все стадии</option>
