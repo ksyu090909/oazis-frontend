@@ -1,28 +1,41 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
 
-function verify(value: string, secret: string): boolean {
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+async function verify(value: string, secret: string): Promise<boolean> {
   const parts = value.split(".");
   if (parts.length !== 2) return false;
   const [payload, signature] = parts;
-  const hmac = createHmac("sha256", secret);
-  hmac.update(payload);
-  const expected = hmac.digest("hex");
+  if (payload !== "authenticated") return false;
+
   try {
-    const expectedBuf = Buffer.from(expected, "hex");
-    const actualBuf = Buffer.from(signature, "hex");
-    return (
-      expectedBuf.length === actualBuf.length &&
-      timingSafeEqual(expectedBuf, actualBuf) &&
-      payload === "authenticated"
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    return await crypto.subtle.verify(
+      "HMAC",
+      key,
+      hexToBytes(signature),
+      encoder.encode(payload)
     );
   } catch {
     return false;
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -41,7 +54,7 @@ export function middleware(request: NextRequest) {
     console.error("[auth] SESSION_SECRET is not set");
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  if (!session || !verify(session, secret)) {
+  if (!session || !(await verify(session, secret))) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
