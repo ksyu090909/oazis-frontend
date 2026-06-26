@@ -3640,6 +3640,7 @@ function DealsSection() {
 
   // Load deals when tab or filters change
   React.useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
@@ -3652,11 +3653,11 @@ function DealsSection() {
 
     fetch(`${API}/api/deals/list?${params.toString()}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error("server"); return r.json(); })
-      .then(d => setDeals(Array.isArray(d) ? d : []))
-      .catch((e: unknown) => setError(e instanceof Error && e.name === "AbortError" ? "Превышено время ожидания Bitrix" : "Нет соединения с сервером"))
-      .finally(() => { clearTimeout(timer); setLoading(false); });
+      .then(d => { if (!cancelled) setDeals(Array.isArray(d) ? d : []); })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error && e.name === "AbortError" ? "Превышено время ожидания Bitrix" : "Нет соединения с сервером"); })
+      .finally(() => { clearTimeout(timer); if (!cancelled) setLoading(false); });
 
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
   }, [tab, selectedCategory, selectedStage, refreshKey]);
 
   // Available stages for selected category
