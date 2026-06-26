@@ -24,10 +24,11 @@ async function verify(value: string, secret: string): Promise<boolean> {
       false,
       ["verify"]
     );
+    const sigBytes = hexToBytes(signature);
     return await crypto.subtle.verify(
       "HMAC",
       key,
-      hexToBytes(signature),
+      sigBytes.buffer as ArrayBuffer,
       encoder.encode(payload)
     );
   } catch {
