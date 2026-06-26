@@ -3648,7 +3648,7 @@ function DealsSection() {
     if (tab === "stuck") params.set("min_age", "14");
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30000);
+    const timer = setTimeout(() => controller.abort(), 60000);
 
     fetch(`${API}/api/deals/list?${params.toString()}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error("server"); return r.json(); })
