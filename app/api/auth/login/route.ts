@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 function sign(value: string, secret: string): string {
   const hmac = createHmac("sha256", secret);
@@ -17,7 +17,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
-  if (password !== correctPassword) {
+  const a = Buffer.from(password);
+  const b = Buffer.from(correctPassword);
+  const match = a.length === b.length && timingSafeEqual(a, b);
+  if (!match) {
     return NextResponse.json({ error: "Неверный пароль" }, { status: 401 });
   }
 

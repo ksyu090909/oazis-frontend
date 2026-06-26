@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 function verify(value: string, secret: string): boolean {
   const parts = value.split(".");
@@ -9,7 +9,17 @@ function verify(value: string, secret: string): boolean {
   const hmac = createHmac("sha256", secret);
   hmac.update(payload);
   const expected = hmac.digest("hex");
-  return signature === expected && payload === "authenticated";
+  try {
+    const expectedBuf = Buffer.from(expected, "hex");
+    const actualBuf = Buffer.from(signature, "hex");
+    return (
+      expectedBuf.length === actualBuf.length &&
+      timingSafeEqual(expectedBuf, actualBuf) &&
+      payload === "authenticated"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function middleware(request: NextRequest) {
@@ -27,7 +37,11 @@ export function middleware(request: NextRequest) {
   const session = request.cookies.get("oazis_session")?.value;
   const secret = process.env.SESSION_SECRET;
 
-  if (!secret || !session || !verify(session, secret)) {
+  if (!secret) {
+    console.error("[auth] SESSION_SECRET is not set");
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  if (!session || !verify(session, secret)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
