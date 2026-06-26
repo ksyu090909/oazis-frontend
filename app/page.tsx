@@ -3779,9 +3779,6 @@ function DealsSection() {
 
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [riskDeals, setRiskDeals] = useState<RiskDeal[]>([]);
-  const [dealsLoading, setDealsLoading] = useState(true);
-  const [dealsError, setDealsError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("deals");
@@ -3803,24 +3800,6 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const fetchDeals = async () => {
-    setDealsLoading(true);
-    setDealsError(null);
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
-      const res = await fetch(`${API}/api/deals/at-risk`, { signal: controller.signal });
-      clearTimeout(timer);
-      const data = await res.json();
-      if (!res.ok) { setDealsError("Ошибка загрузки сделок из Bitrix"); setRiskDeals([]); }
-      else setRiskDeals(Array.isArray(data) ? data : []);
-    } catch (e: unknown) {
-      setDealsError(e instanceof Error && e.name === "AbortError" ? "Превышено время ожидания Bitrix" : "Нет соединения с сервером");
-      setRiskDeals([]);
-    }
-    setDealsLoading(false);
-  };
-
   const fetchDirections = async () => {
     try {
       const res = await fetch(`${API}/api/directions/`);
@@ -3830,7 +3809,7 @@ export default function Dashboard() {
     } catch { dirStore.list = []; }
   };
 
-  useEffect(() => { fetchTasks(); fetchDeals(); fetchDirections(); }, []);
+  useEffect(() => { fetchTasks(); fetchDirections(); }, []);
 
   // Optimistic updates — no page scroll
   const markDone = (id: number) => {
@@ -3942,7 +3921,6 @@ export default function Dashboard() {
   const sortedDirections = dirOrder().filter(d => groupedTasks[d]);
 
   const overdue = tasks.filter(t => t.deadline && t.deadline < today).length;
-  const riskMoney = riskDeals.reduce((s, d) => s + (d.commission || 0), 0);
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "'Inter', -apple-system, sans-serif", color: "#111", display: "flex" }}>
 
@@ -3998,14 +3976,12 @@ export default function Dashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 32 }}>
               <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
                 <div style={{ fontSize: 12, color: "#999", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Под риском</div>
-                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px", color: riskMoney > 0 ? "#e53e3e" : "#111" }}>
-                  {dealsLoading ? "—" : riskMoney > 0 ? `${fmt(riskMoney)} ₽` : "—"}
-                </div>
+                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px", color: "#111" }}>—</div>
                 <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>комиссий без движения</div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
                 <div style={{ fontSize: 12, color: "#999", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Зависших сделок</div>
-                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px" }}>{dealsLoading ? "—" : riskDeals.length}</div>
+                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px" }}>—</div>
                 <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>требуют внимания</div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
@@ -4015,61 +3991,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Зависшие сделки — заголовок */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>Зависшие сделки</span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#bbb" }}>по дате последнего движения</span>
-                <button onClick={fetchDeals} style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>↻ обновить</button>
-              </div>
-            </div>
-
-            {dealsLoading ? (
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "28px", textAlign: "center", color: "#bbb", fontSize: 13, marginBottom: 32 }}>Загрузка из Bitrix…</div>
-            ) : dealsError ? (
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "24px", textAlign: "center", fontSize: 13, marginBottom: 32 }}>
-                <div style={{ color: "#e53e3e", marginBottom: 8 }}>{dealsError}</div>
-                <button onClick={fetchDeals} style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>Попробовать снова</button>
-              </div>
-            ) : (() => {
-              const activeDeals = riskDeals.filter(d => !d.is_fired);
-              const firedDeals = riskDeals.filter(d => d.is_fired);
-
-              // group active by stage
-              const byStage: Record<string, RiskDeal[]> = {};
-              for (const d of activeDeals) {
-                if (!byStage[d.stage]) byStage[d.stage] = [];
-                byStage[d.stage].push(d);
-              }
-              const stages = STAGE_ORDER.filter(s => byStage[s]);
-
-              return (
-                <div style={{ marginBottom: 32 }}>
-                  {activeDeals.length === 0 && firedDeals.length === 0 && (
-                    <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "28px", textAlign: "center", color: "#bbb", fontSize: 13 }}>Зависших сделок нет</div>
-                  )}
-
-                  {/* По стадиям — горизонтально */}
-                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(stages.length, 3)}, 1fr)`, gap: 10, marginBottom: firedDeals.length > 0 ? 10 : 0 }}>
-                    {stages.map(stage => (
-                      <DealStageGroup key={stage} stage={stage} deals={byStage[stage]} />
-                    ))}
-                  </div>
-
-                  {/* Сделки уволенных */}
-                  {firedDeals.length > 0 && (
-                    <div style={{ background: "#fff", border: "1px solid #fdd", borderRadius: 12, overflow: "hidden", marginTop: 6 }}>
-                      <div style={{ padding: "13px 20px", background: "#fff5f5", borderBottom: "1px solid #fdd", display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#c53030", flex: 1 }}>Сделки уволенных сотрудников</span>
-                        <span style={{ fontSize: 11, color: "#e53e3e", background: "#fed7d7", borderRadius: 10, padding: "2px 8px" }}>{firedDeals.length}</span>
-                        <span style={{ fontSize: 12, color: "#fc8181" }}>требуют переназначения</span>
-                      </div>
-                      {firedDeals.map((d, i) => <DealRow key={d.url} d={d} last={i === firedDeals.length - 1} />)}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Зависшие / Все сделки */}
+            <DealsSection />
 
             {/* Задачи — шапка */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
