@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const API = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type Direction = { id: number; key: string; label: string; color: string; sort_order: number };
 
@@ -633,7 +633,7 @@ function CalendarChip({ task, onDone, onUpdate, onDelete, dragging, onDragStart 
         opacity: dragging ? 0.4 : 1, transition: "opacity 0.15s",
         marginBottom: 2,
       }}>
-      <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: COL_W - 20 }}>
+      <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
         {task.title}
       </div>
       {task.scheduled_time && <div style={{ fontSize: 10, color: "#888" }}>{task.scheduled_time}</div>}
@@ -759,9 +759,9 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
         </div>
       )}
 
-      {/* Calendar grid — horizontally scrollable */}
-      <div style={{ overflowX: "auto", border: "1px solid #ebebeb", borderRadius: 12, background: "#fff" }}>
-        <div style={{ minWidth: totalW }}>
+      {/* Calendar grid — 7 columns fill available width */}
+      <div style={{ border: "1px solid #ebebeb", borderRadius: 12, background: "#fff" }}>
+        <div>
 
           {/* Day headers */}
           <div style={{ display: "flex", borderBottom: "1px solid #ebebeb" }}>
@@ -770,7 +770,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
               const ymd = toYMD(day);
               const isToday = ymd === today;
               return (
-                <div key={ymd} style={{ width: COL_W, flexShrink: 0, padding: "10px 8px", borderLeft: "1px solid #f0f0f0", textAlign: "center", background: isToday ? "#111" : "#fff" }}>
+                <div key={ymd} style={{ flex: 1, minWidth: 0, padding: "10px 8px", borderLeft: "1px solid #f0f0f0", textAlign: "center", background: isToday ? "#111" : "#fff" }}>
                   <div style={{ fontSize: 11, color: isToday ? "rgba(255,255,255,0.6)" : "#bbb", fontWeight: 500 }}>{DAY_SHORT[day.getDay()]}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: isToday ? "#fff" : "#111", marginTop: 1 }}>{day.getDate()}</div>
                   <div style={{ fontSize: 10, color: isToday ? "rgba(255,255,255,0.5)" : "#ccc" }}>{day.toLocaleDateString("ru-RU", { month: "short" })}</div>
@@ -793,7 +793,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                   onDragOver={e => { e.preventDefault(); setDropTarget({ date: ymd, hour: null }); }}
                   onDragLeave={() => setDropTarget(null)}
                   onDrop={() => handleDrop(ymd, null)}
-                  style={{ width: COL_W, flexShrink: 0, borderLeft: "1px solid #f0f0f0", padding: "4px 4px", background: isDropTarget ? "#f0f7ff" : "transparent", minHeight: 36 }}>
+                  style={{ flex: 1, minWidth: 0, borderLeft: "1px solid #f0f0f0", padding: "4px 4px", background: isDropTarget ? "#f0f7ff" : "transparent", minHeight: 36 }}>
                   {allDay.map(t => (
                     <CalendarChip key={t.id} task={t}
                       onDone={() => onDone(t.id)}
@@ -832,7 +832,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                     onDrop={() => handleDrop(ymd, hour)}
                     onClick={() => setAddingInSlot({ date: ymd, hour })}
                     style={{
-                      width: COL_W, flexShrink: 0, borderLeft: "1px solid #f0f0f0",
+                      flex: 1, minWidth: 0, borderLeft: "1px solid #f0f0f0",
                       padding: "2px 4px", position: "relative", cursor: "pointer",
                       background: isDropTarget ? "#e8f4fd" : isToday ? "#fafeff" : "transparent",
                     }}>
@@ -847,7 +847,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                     {appleEvents.filter(e => e.date === ymd && !e.allday && e.start_time && parseInt(e.start_time.split(":")[0]) === hour).map((e, i) => (
                       <div key={`ac-${i}`} title={`${e.cal_name}: ${e.start_time}–${e.end_time}`}
                         style={{ background: e.calendar === "personal" ? "#fef9c3" : "#ede9fe", borderLeft: `3px solid ${e.calendar === "personal" ? "#f59e0b" : "#6366f1"}`, borderRadius: "0 5px 5px 0", padding: "2px 6px", fontSize: 11, marginBottom: 2, userSelect: "none" }}>
-                        <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: COL_W - 20 }}>
+                        <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
                           <span style={{ marginRight: 3 }}>🍎</span>{e.title}
                         </div>
                         <div style={{ fontSize: 10, color: "#888" }}>{e.start_time}–{e.end_time}</div>
@@ -3992,7 +3992,7 @@ export default function Dashboard() {
 
       {/* ── Main content ── */}
       <div style={{ flex: 1, minWidth: 0 }}>
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
+      <main style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 24px" }}>
 
         {activeTab === "deals" && (
           <>
