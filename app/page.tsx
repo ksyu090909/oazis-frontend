@@ -3752,7 +3752,7 @@ function DealsSection() {
       </div>
 
       {/* Deals list */}
-      {loading ? (
+      {(loading || metaLoading) ? (
         <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 28, textAlign: "center", color: "#bbb", fontSize: 13, marginBottom: 32 }}>
           Загрузка из Bitrix…
         </div>
