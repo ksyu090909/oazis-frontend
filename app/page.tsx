@@ -938,21 +938,19 @@ function DealRow({ d, last }: { d: RiskDeal; last: boolean }) {
   const ageColor = critical ? "#e53e3e" : warn ? "#f6ad55" : "#bbb";
   return (
     <a href={d.url} target="_blank" rel="noreferrer"
-      style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 20px", borderBottom: last ? "none" : "1px solid #f0f0f0", textDecoration: "none", color: "inherit", transition: "background 0.1s" }}
+      style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", alignItems: "center", gap: 16, padding: "11px 20px", borderBottom: last ? "none" : "1px solid #f0f0f0", textDecoration: "none", color: "inherit", transition: "background 0.1s" }}
       onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.client}</div>
-        {d.broker && <div style={{ fontSize: 12, color: "#999", marginTop: 1 }}>{d.broker}</div>}
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#111", flexShrink: 0 }}>
+      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, justifySelf: "center" }} />
+      <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{d.client}</div>
+      <div style={{ fontSize: 13, color: "#777" }}>{d.broker || "—"}</div>
+      <div style={{ fontSize: 13, fontWeight: 500, color: "#111", textAlign: "right" }}>
         {d.commission > 0 ? `${d.commission.toLocaleString("ru-RU")} ₽` : "—"}
       </div>
-      <div style={{ fontSize: 12, color: ageColor, fontWeight: 600, minWidth: 64, textAlign: "right", flexShrink: 0 }}>
+      <div style={{ fontSize: 12, color: ageColor, fontWeight: 600, textAlign: "right" }}>
         {d.age_days} дн.
       </div>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ justifySelf: "center" }}>
         <path d="M7 17L17 7M17 7H7M17 7v10" />
       </svg>
     </a>
@@ -974,19 +972,31 @@ function DealStageGroup({ stage, deals }: { stage: string; deals: RiskDeal[] }) 
   const color = STAGE_COLOR[stage] || "#888";
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
       <div
         onClick={() => setCollapsed(!collapsed)}
-        style={{ padding: "13px 20px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", borderBottom: collapsed ? "none" : "1px solid #f5f5f5" }}>
+        style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", borderBottom: collapsed ? "none" : "1px solid #f0f0f0", background: "#fafafa" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0, display: "inline-block" }} />
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{stage}</span>
-        <span style={{ fontSize: 11, color: "#bbb", background: "#f5f5f5", borderRadius: 10, padding: "2px 8px" }}>{deals.length}</span>
+        <span style={{ fontSize: 11, color: "#bbb", background: "#efefef", borderRadius: 10, padding: "2px 8px" }}>{deals.length}</span>
         {totalCommission > 0 && (
-          <span style={{ fontSize: 12, color: "#999" }}>{fmt(totalCommission)} ₽</span>
+          <span style={{ fontSize: 12, color: "#999", fontWeight: 500 }}>{fmt(totalCommission)} ₽</span>
         )}
         <span style={{ fontSize: 11, color: "#bbb", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
       </div>
-      {!collapsed && deals.map((d, i) => <DealRow key={d.url} d={d} last={i === deals.length - 1} />)}
+      {!collapsed && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", gap: 16, padding: "7px 20px", borderBottom: "1px solid #f5f5f5" }}>
+            <div />
+            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px" }}>Клиент</div>
+            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px" }}>Брокер</div>
+            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Комиссия</div>
+            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Без движ.</div>
+            <div />
+          </div>
+          {deals.map((d, i) => <DealRow key={d.url} d={d} last={i === deals.length - 1} />)}
+        </>
+      )}
     </div>
   );
 }
@@ -3770,7 +3780,7 @@ function DealsSection() {
               {tab === "stuck" ? "Зависших сделок нет" : "Сделок не найдено"}
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(Math.max(stages.length, 1), 3)}, 1fr)`, gap: 10, marginBottom: firedDeals.length > 0 ? 10 : 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: firedDeals.length > 0 ? 10 : 0 }}>
             {stages.map(stage => (
               <DealStageGroup key={stage} stage={stage} deals={byStage[stage]} />
             ))}
