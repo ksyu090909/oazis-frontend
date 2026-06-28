@@ -3667,12 +3667,25 @@ function DealsSection() {
     return cat ? cat.stages : [];
   }, [meta, selectedCategory]);
 
+  // Full stage ID → name map from meta (all categories)
+  const stageNameMap: Record<string, string> = React.useMemo(() => {
+    if (!meta) return {};
+    const map: Record<string, string> = {};
+    for (const cat of meta.categories) {
+      for (const s of cat.stages) {
+        map[s.id] = s.name;
+      }
+    }
+    return map;
+  }, [meta]);
+
   const activeDeals = deals.filter(d => !d.is_fired);
   const firedDeals = deals.filter(d => d.is_fired);
   const byStage: Record<string, RiskDeal[]> = {};
   for (const d of activeDeals) {
-    if (!byStage[d.stage]) byStage[d.stage] = [];
-    byStage[d.stage].push(d);
+    const stageName = stageNameMap[d.stage_id] || d.stage;
+    if (!byStage[stageName]) byStage[stageName] = [];
+    byStage[stageName].push(d);
   }
   const stages = Object.keys(byStage).sort((a, b) => {
     const ai = STAGE_ORDER.indexOf(a);
