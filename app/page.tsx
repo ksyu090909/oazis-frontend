@@ -95,6 +95,7 @@ const NAV_ITEMS = [
   { key: "brokers",     label: "Расходы компании", icon: "💳" },
   { key: "team",        label: "Команда",         icon: "👥" },
   { key: "legal",       label: "Юр-риски",        icon: "⚖"  },
+  { key: "legal_processes", label: "Юр. процессы", icon: "§" },
   { key: "competitors", label: "Рынок",            icon: "⊛"  },
 ];
 const DEPARTMENTS = NAV_ITEMS;
@@ -2744,6 +2745,222 @@ function LegalSection() {
   );
 }
 
+// ── Юр. процессы — бэклог юридических вопросов на разбор ────────────────────────
+type LegalQuestion = {
+  id: number;
+  title: string;
+  category: string;
+  status: string;
+  notes: string | null;
+  created_at: string | null;
+  done_at: string | null;
+};
+
+const LP_CATEGORIES: { key: string; label: string }[] = [
+  { key: "clients",       label: "Клиенты / сделки" },
+  { key: "personal_data", label: "Персданные" },
+  { key: "hr",            label: "HR" },
+  { key: "product",       label: "Продукт" },
+  { key: "other",         label: "Прочее" },
+];
+
+const LP_STATUSES: { key: string; label: string }[] = [
+  { key: "new",         label: "Новый" },
+  { key: "in_progress", label: "В работе" },
+  { key: "to_lawyer",   label: "К юристу" },
+  { key: "done",        label: "Закрыт" },
+];
+
+function LegalProcessesSection() {
+  const BG   = "#fdf8f5";
+  const CARD = "#ffffff";
+  const BORDER = "#ecddd6";
+  const TEXT  = "#3d2a26";
+  const MUTED = "#9a7d76";
+  const ACCENT = "#b07a5a";
+
+  const [items, setItems] = React.useState<LegalQuestion[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [filter, setFilter] = React.useState<string>("all");
+  const [adding, setAdding] = React.useState(false);
+  const [newTitle, setNewTitle] = React.useState("");
+  const [newCategory, setNewCategory] = React.useState("other");
+  const [newNotes, setNewNotes] = React.useState("");
+  const [openNotes, setOpenNotes] = React.useState<Record<number, boolean>>({});
+
+  const load = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/legal/questions`);
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  const catLabel = (k: string) => LP_CATEGORIES.find(c => c.key === k)?.label || k;
+
+  const createQuestion = async () => {
+    if (!newTitle.trim()) return;
+    await fetch(`${API}/api/legal/questions`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle.trim(), category: newCategory, notes: newNotes.trim() || null }),
+    });
+    setNewTitle(""); setNewCategory("other"); setNewNotes(""); setAdding(false);
+    load();
+  };
+
+  const patchQuestion = async (id: number, patch: Partial<LegalQuestion>) => {
+    setItems(prev => prev.map(x => x.id === id ? { ...x, ...patch } : x));
+    await fetch(`${API}/api/legal/questions/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    load();
+  };
+
+  const deleteQuestion = async (id: number) => {
+    setItems(prev => prev.filter(x => x.id !== id));
+    await fetch(`${API}/api/legal/questions/${id}`, { method: "DELETE" });
+  };
+
+  const filtered = (filter === "all" ? items : items.filter(x => x.category === filter))
+    .slice()
+    .sort((a, b) => {
+      // Закрытые — в конец
+      const ad = a.status === "done" ? 1 : 0;
+      const bd = b.status === "done" ? 1 : 0;
+      if (ad !== bd) return ad - bd;
+      return (b.created_at || "").localeCompare(a.created_at || "");
+    });
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    padding: "6px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer",
+    border: `1px solid ${active ? ACCENT : BORDER}`,
+    background: active ? ACCENT : CARD,
+    color: active ? "#fff" : TEXT, whiteSpace: "nowrap",
+  });
+
+  return (
+    <div style={{ padding: "0 0 40px", background: BG, minHeight: "100%" }}>
+      {/* Заголовок */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: TEXT }}>Юр. процессы</h2>
+          <p style={{ margin: "4px 0 0", color: MUTED, fontSize: 13 }}>Вопросы на разбор — статус, категория, заметки</p>
+        </div>
+        <button onClick={() => setAdding(a => !a)} style={{
+          padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+          background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 600,
+        }}>+ Вопрос</button>
+      </div>
+
+      {/* Форма добавления */}
+      {adding && (
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 12, background: CARD, padding: 16, marginBottom: 20 }}>
+          <input
+            value={newTitle} onChange={e => setNewTitle(e.target.value)}
+            placeholder="Формулировка вопроса…" autoFocus
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 14, color: TEXT, marginBottom: 10, boxSizing: "border-box" }}
+          />
+          <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <select value={newCategory} onChange={e => setNewCategory(e.target.value)}
+              style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 13, color: TEXT, background: CARD }}>
+              {LP_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          </div>
+          <textarea
+            value={newNotes} onChange={e => setNewNotes(e.target.value)}
+            placeholder="Заметки (необязательно)…" rows={2}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 13, color: TEXT, marginBottom: 12, boxSizing: "border-box", resize: "vertical" }}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={createQuestion} disabled={!newTitle.trim()} style={{
+              padding: "9px 16px", borderRadius: 8, border: "none", cursor: newTitle.trim() ? "pointer" : "default",
+              background: newTitle.trim() ? ACCENT : "#ddd", color: "#fff", fontSize: 13, fontWeight: 600,
+            }}>Добавить</button>
+            <button onClick={() => { setAdding(false); setNewTitle(""); setNewNotes(""); }} style={{
+              padding: "9px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, cursor: "pointer",
+              background: CARD, color: MUTED, fontSize: 13,
+            }}>Отмена</button>
+          </div>
+        </div>
+      )}
+
+      {/* Фильтры по категории */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <span onClick={() => setFilter("all")} style={chipStyle(filter === "all")}>Все</span>
+        {LP_CATEGORIES.map(c => (
+          <span key={c.key} onClick={() => setFilter(c.key)} style={chipStyle(filter === c.key)}>{c.label}</span>
+        ))}
+      </div>
+
+      {/* Список */}
+      {loading ? (
+        <p style={{ color: MUTED, fontSize: 13 }}>Загрузка…</p>
+      ) : filtered.length === 0 ? (
+        <p style={{ color: MUTED, fontSize: 13 }}>Пока нет вопросов. Нажмите «+ Вопрос», чтобы добавить.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.map(q => {
+            const done = q.status === "done";
+            const notesOpen = openNotes[q.id];
+            return (
+              <div key={q.id} style={{
+                border: `1px solid ${BORDER}`, borderRadius: 12, background: CARD,
+                padding: 16, opacity: done ? 0.6 : 1,
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: TEXT, textDecoration: done ? "line-through" : "none" }}>{q.title}</div>
+                    <div style={{ marginTop: 6, display: "inline-block", padding: "2px 10px", borderRadius: 12, fontSize: 11, background: "#f3e9e3", color: MUTED }}>{catLabel(q.category)}</div>
+                  </div>
+                  <button onClick={() => deleteQuestion(q.id)} title="Удалить" style={{
+                    border: "none", background: "transparent", cursor: "pointer", color: MUTED, fontSize: 16, lineHeight: 1,
+                  }}>×</button>
+                </div>
+
+                {/* Статус */}
+                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                  {LP_STATUSES.map(s => {
+                    const active = q.status === s.key;
+                    return (
+                      <button key={s.key} onClick={() => patchQuestion(q.id, { status: s.key })} style={{
+                        padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                        border: `1px solid ${active ? ACCENT : BORDER}`,
+                        background: active ? ACCENT : CARD, color: active ? "#fff" : MUTED,
+                      }}>{s.label}</button>
+                    );
+                  })}
+                </div>
+
+                {/* Заметки */}
+                <div style={{ marginTop: 12 }}>
+                  <button onClick={() => setOpenNotes(o => ({ ...o, [q.id]: !o[q.id] }))} style={{
+                    border: "none", background: "transparent", cursor: "pointer", color: ACCENT, fontSize: 12, padding: 0,
+                  }}>{notesOpen ? "▾ Заметки" : "▸ Заметки"}{q.notes && !notesOpen ? " •" : ""}</button>
+                  {notesOpen && (
+                    <textarea
+                      defaultValue={q.notes || ""}
+                      onBlur={e => { if (e.target.value !== (q.notes || "")) patchQuestion(q.id, { notes: e.target.value }); }}
+                      placeholder="Детали, ход разбора, итоговый вывод…" rows={3}
+                      style={{ width: "100%", marginTop: 8, padding: "10px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 13, color: TEXT, boxSizing: "border-box", resize: "vertical" }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── HR раздел ─────────────────────────────────────────────────────────────────
 const TONE: Record<string, { bg: string; border: string; color: string; dot: string }> = {
   good: { bg: "#f0fdf4", border: "#bbf7d0", color: "#15803d", dot: "#22c55e" },
@@ -4088,6 +4305,7 @@ export default function Dashboard() {
         {activeTab === "weekly" && <HRDashboard />}
         {activeTab === "finance" && <FinancePlaceholder />}
         {activeTab === "legal" && <LegalSection />}
+        {activeTab === "legal_processes" && <LegalProcessesSection />}
         {activeTab === "competitors" && <MarketSection />}
 
       </main>
