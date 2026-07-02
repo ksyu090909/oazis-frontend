@@ -25,6 +25,19 @@ const PRESET_COLORS = [
   "#ea580c","#c026d3","#0891b2","#e53e3e","#6b7280",
 ];
 
+// ── Месяцы ──────────────────────────────────────────────────────────────────
+const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+// Текущий месяц по-русски (0 = январь).
+function currentMonthRu(): string {
+  return MONTHS_RU[new Date().getMonth()];
+}
+// Список месяцев текущего года от startIdx (0 = январь) до текущего месяца включительно.
+// На 1-е число нового месяца новый месяц добавляется автоматически.
+function monthsThrough(startIdx = 0): string[] {
+  const end = Math.max(new Date().getMonth(), startIdx);
+  return MONTHS_RU.slice(startIdx, end + 1);
+}
+
 const PRIORITY_OPTIONS = [
   { value: "high", label: "Высокий", color: "#e53e3e" },
   { value: "medium", label: "Средний", color: "#f6ad55" },
@@ -1020,7 +1033,7 @@ function SalesDashboard() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [view, setView] = React.useState<"funnel" | "brokers" | "rnp">("funnel");
-  const [rnpMonth, setRnpMonth] = React.useState("Июнь");
+  const [rnpMonth, setRnpMonth] = React.useState(currentMonthRu());
 
   React.useEffect(() => {
     setLoading(true);
@@ -1156,7 +1169,7 @@ function SalesDashboard() {
         <div>
           {/* Выбор месяца */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-            {["Январь","Февраль","Март","Апрель","Май","Июнь"].map(m => (
+            {monthsThrough(0).map(m => (
               <button key={m} onClick={() => setRnpMonth(m)} style={{
                 padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
                 background: rnpMonth === m ? "#5b4ff5" : "#fff",
@@ -1169,6 +1182,8 @@ function SalesDashboard() {
 
           {!rnpData ? (
             <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Загрузка РНП…</div>
+          ) : rnpData.empty ? (
+            <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {rnpData.month} — вкладка ещё не заведена в таблице</div>
           ) : (
             <>
               {/* Воронка план/факт */}
@@ -1958,7 +1973,7 @@ function EfficiencySection() {
         </div>
         {/* Выбор месяца */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {MONTHS_RU_EFF.slice(0, 6).map(m => (
+          {monthsThrough(0).map(m => (
             <button key={m} onClick={() => setMonth(m)} style={{
               padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", fontFamily: "inherit",
               background: month === m ? "#111" : "#fff",
@@ -2081,7 +2096,7 @@ function RnpEfficiencySection() {
         <>
           {/* Выбор месяца */}
           <div style={{ display: "flex", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
-            {MONTHS_RU_EFF.slice(0, 6).map(m => (
+            {monthsThrough(0).map(m => (
               <button key={m} onClick={() => setMonth(m)} style={{
                 padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", fontFamily: "inherit",
                 background: month === m ? "#111" : "#fff",
@@ -3132,8 +3147,8 @@ function HRHeadcountView() {
 
 // ─── T2: РНП — воронка найма + источники ────────────────────────────────────
 function HRRnpView() {
-  const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь"];
-  const [month, setMonth] = React.useState("Июнь");
+  const MONTHS = monthsThrough(0);
+  const [month, setMonth] = React.useState(currentMonthRu());
   const [data, setData] = React.useState<any>(null);
   React.useEffect(() => {
     setData(null);
@@ -3151,7 +3166,9 @@ function HRRnpView() {
           }}>{m}</button>
         ))}
       </div>
-      {!data ? <HRLoading text="Загружаю РНП…" /> : (
+      {!data ? <HRLoading text="Загружаю РНП…" /> : data.empty ? (
+        <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {data.month} — вкладка ещё не заведена в таблице</div>
+      ) : (
         <>
           {/* Воронка — карточки */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, marginBottom: 24 }}>
@@ -3250,8 +3267,8 @@ function HRRnpView() {
 
 // ─── T3: ЗП и KPI HR-менеджера ──────────────────────────────────────────────
 function HRSalaryView() {
-  const T3_MONTHS = ["Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь"];
-  const [month, setMonth] = React.useState("Июнь");
+  const T3_MONTHS = monthsThrough(2); // таблица ведётся с марта
+  const [month, setMonth] = React.useState(T3_MONTHS[T3_MONTHS.length - 1]);
   const [data, setData] = React.useState<any>(null);
   React.useEffect(() => {
     setData(null);
@@ -3272,7 +3289,9 @@ function HRSalaryView() {
           }}>{m}</button>
         ))}
       </div>
-      {!data || data.error ? <HRLoading text="Загружаю данные по зарплате…" /> : (
+      {!data ? <HRLoading text="Загружаю данные по зарплате…" /> : (data.empty || data.error) ? (
+        <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {data.month || month} — вкладка ещё не заведена в таблице</div>
+      ) : (
         <>
           {/* Карточки зарплаты */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
