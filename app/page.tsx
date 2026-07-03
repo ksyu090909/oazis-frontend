@@ -3491,7 +3491,7 @@ function FinanceSection() {
       <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 120, margin: "8px 0 24px", maxWidth: 900 }}>
         {totalByMonth.map((v: number, i: number) => (
           <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div title={money(v)} style={{ height: `${Math.max(2, (v / maxTotal) * 100)}%`,
+            <div title={money(v)} style={{ height: Math.max(2, (v / maxTotal) * 100),
               background: i === curMonthIdx ? ACCENT : "#cfe0d9", borderRadius: 3 }} />
             <div style={{ fontSize: 10, color: MUTED, marginTop: 4 }}>{data.months[i].slice(0, 3)}</div>
           </div>
@@ -3636,8 +3636,8 @@ function MotivPayroll() {
                   {["Оклад", "Сделка", "Премия", "Штрафы", "Итого", "Аванс"].map(h => (
                     <th key={h} style={{ textAlign: "right", padding: 4 }}>{h}</th>))}</tr></thead>
                 <tbody>
-                  {d.rows.map((e: any) => (
-                    <tr key={e.fio}>
+                  {d.rows.map((e: any, ri: number) => (
+                    <tr key={`${e.fio}-${ri}`}>
                       <td style={{ padding: 4 }}>{e.fio}<span style={{ color: MOTIV_MUTED }}> · {e.position}</span></td>
                       {FIELDS.map(f => (
                         <td key={f} style={{ textAlign: "right", padding: 4 }}>{e[f] ? money0(e[f]) : "—"}</td>))}
@@ -3660,7 +3660,7 @@ function MotivPayroll() {
           <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 120, maxWidth: 900 }}>
             {year.fotByMonth.map((v: number, i: number) => (
               <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                <div title={money0(v)} style={{ height: `${Math.max(2, (v / maxFot) * 100)}%`,
+                <div title={money0(v)} style={{ height: Math.max(2, (v / maxFot) * 100),
                   background: i === new Date().getMonth() ? MOTIV_ACCENT : "#cfe0d9", borderRadius: 3 }} />
                 <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{MONTHS_RU[i].slice(0, 3)}</div>
               </div>
@@ -3702,7 +3702,7 @@ function MotivRole({ roleKey }: { roleKey: string }) {
       <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 80, maxWidth: 700, marginBottom: 16 }}>
         {role.months.map((m: any, i: number) => (
           <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div title={money0(m.total)} style={{ height: `${Math.max(2, ((m.total || 0) / maxBonus) * 100)}%`,
+            <div title={money0(m.total)} style={{ height: Math.max(2, ((m.total || 0) / maxBonus) * 60),
               background: m.month === cur ? MOTIV_ACCENT : "#cfe0d9", borderRadius: 3 }} />
             <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{m.month.slice(0, 3)}</div>
           </div>
@@ -3755,9 +3755,9 @@ function MotivOwners() {
           <div key={i} style={{ flex: 1, textAlign: "center" }}>
             <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 84 }}>
               <div title={`план ${money0(d.netProfit.plan[i])}`}
-                style={{ flex: 1, height: `${Math.max(2, (d.netProfit.plan[i] / maxNp) * 100)}%`, background: "#cfe0d9", borderRadius: 2 }} />
+                style={{ flex: 1, height: Math.max(2, (d.netProfit.plan[i] / maxNp) * 80), background: "#cfe0d9", borderRadius: 2 }} />
               <div title={`факт ${money0(d.netProfit.fact[i])}`}
-                style={{ flex: 1, height: `${Math.max(2, (d.netProfit.fact[i] / maxNp) * 100)}%`,
+                style={{ flex: 1, height: Math.max(2, (d.netProfit.fact[i] / maxNp) * 80),
                   background: i === curIdx ? MOTIV_ACCENT : "#7fae9c", borderRadius: 2 }} />
             </div>
             <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{m.slice(0, 3)}</div>
