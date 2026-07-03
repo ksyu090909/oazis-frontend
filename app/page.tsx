@@ -3453,6 +3453,92 @@ function FinancePlaceholder() {
   );
 }
 
+// ── Finance Section (ДДС) ────────────────────────────────────────────────────
+function FinanceSection() {
+  const MUTED = "#9a7d76";
+  const ACCENT = "#1A6B52";
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [pay, setPay] = React.useState<any>(null);
+  const curMonthIdx = new Date().getMonth(); // 0..11
+  React.useEffect(() => {
+    fetch(`${API}/api/finance/dds`).then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+    fetch(`${API}/api/finance/payment-calendar`).then(r => r.json()).then(setPay).catch(() => setPay({ empty: true }));
+  }, []);
+  if (loading) return <div style={{ padding: 24, color: MUTED }}>Загрузка…</div>;
+  if (!data || data.empty) return <div style={{ padding: 24, color: MUTED }}>Нет данных ДДС</div>;
+  const money = (n: number) => (n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+  const cell = (n: number, i: number) => (
+    <td key={i} style={{ textAlign: "right", padding: "4px 8px",
+      color: n < 0 ? "#c0392b" : "#111", whiteSpace: "nowrap",
+      background: i === curMonthIdx ? "#f3f8f6" : "none" }}>{n ? money(n) : "—"}</td>
+  );
+  const headMonth = (m: string, i: number) => (
+    <th key={i} style={{ textAlign: "right", padding: "4px 8px", fontWeight: i === curMonthIdx ? 700 : 500,
+      color: i === curMonthIdx ? ACCENT : MUTED }}>{m.slice(0, 3)}</th>
+  );
+  const totalByMonth = data.months.map((_: string, i: number) =>
+    data.accounts.reduce((s: number, a: any) => s + (a.values[i] || 0), 0));
+  const maxTotal = Math.max(1, ...totalByMonth);
+  return (
+    <div style={{ padding: 24, overflowX: "auto" }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Финансы — ДДС</h2>
+
+      <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 4px" }}>Динамика остатков</h3>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 120, margin: "8px 0 24px", maxWidth: 900 }}>
+        {totalByMonth.map((v: number, i: number) => (
+          <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div title={money(v)} style={{ height: `${Math.max(2, (v / maxTotal) * 100)}%`,
+              background: i === curMonthIdx ? ACCENT : "#cfe0d9", borderRadius: 3 }} />
+            <div style={{ fontSize: 10, color: MUTED, marginTop: 4 }}>{data.months[i].slice(0, 3)}</div>
+          </div>
+        ))}
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 900 }}>
+        <thead>
+          <tr><th style={{ textAlign: "left", padding: "4px 8px" }}></th>
+            {data.months.map(headMonth)}</tr>
+        </thead>
+        <tbody>
+          <tr style={{ fontWeight: 700, background: "#f6f6f6" }}>
+            <td style={{ padding: "4px 8px" }}>Денег на начало</td>
+            {data.cashStart.map((n: number, i: number) => cell(n, i))}</tr>
+          {data.accounts.map((a: any) => (
+            <tr key={a.name}><td style={{ padding: "4px 8px" }}>{a.name}</td>
+              {a.values.map((n: number, i: number) => cell(n, i))}</tr>
+          ))}
+          {data.activities.map((act: any) => (
+            <React.Fragment key={act.name}>
+              <tr style={{ fontWeight: 700, background: "#eef5f2" }}>
+                <td style={{ padding: "6px 8px" }}>{act.name}</td>
+                {act.net.map((n: number, i: number) => cell(n, i))}</tr>
+              {act.items.map((it: any) => (
+                <tr key={it.label}><td style={{ padding: "4px 8px 4px 20px", color: MUTED }}>{it.label}</td>
+                  {it.values.map((n: number, i: number) => cell(n, i))}</tr>
+              ))}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+
+      <h3 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 8px" }}>Платёжный календарь</h3>
+      {(!pay || pay.empty) ? <div style={{ color: MUTED, fontSize: 13 }}>Нет запланированных платежей</div> : (
+        <table style={{ borderCollapse: "collapse", fontSize: 12 }}><tbody>
+          {pay.items.map((p: any, i: number) => (
+            <tr key={i}><td style={{ padding: "4px 12px 4px 0" }}>{p.date}</td>
+              <td style={{ padding: "4px 12px 4px 0" }}>{p.org}</td>
+              <td style={{ padding: "4px 12px 4px 0", color: MUTED }}>{p.article}</td>
+              <td style={{ padding: "4px 0", textAlign: "right" }}>{money(p.amount)}</td></tr>
+          ))}
+        </tbody></table>
+      )}
+    </div>
+  );
+}
+
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 // ── New Direction Modal ──────────────────────────────────────────────────────
 function NewDirectionModal({ onSave, onClose }: { onSave: (d: Direction) => void; onClose: () => void }) {
@@ -4322,7 +4408,7 @@ export default function Dashboard() {
         {activeTab === "rnp" && <RnpEfficiencySection />}
 
         {activeTab === "weekly" && <HRDashboard />}
-        {activeTab === "finance" && <FinancePlaceholder />}
+        {activeTab === "finance" && <FinanceSection />}
         {activeTab === "legal" && <LegalSection />}
         {activeTab === "legal_processes" && <LegalProcessesSection />}
         {activeTab === "competitors" && <MarketSection />}
