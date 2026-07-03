@@ -105,6 +105,7 @@ const NAV_ITEMS = [
   { key: "weekly",      label: "HR",              icon: "📅" },
   { key: "knowledge",   label: "Обучение",        icon: "📖" },
   { key: "finance",     label: "Финансы",         icon: "₽"  },
+  { key: "motivation",  label: "Мотивация",       icon: "🎯" },
   { key: "brokers",     label: "Расходы компании", icon: "💳" },
   { key: "team",        label: "Команда",         icon: "👥" },
   { key: "legal",       label: "Юр-риски",        icon: "⚖"  },
@@ -3539,6 +3540,347 @@ function FinanceSection() {
   );
 }
 
+// ── Motivation Section (Мотивация) ───────────────────────────────────────────
+const MOTIV_MUTED = "#9a7d76";
+const MOTIV_ACCENT = "#1A6B52";
+const money0 = (n: number) => (n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+
+const MOTIV_TABS = [
+  { key: "payroll", label: "Ведомость" },
+  { key: "dir",     label: "Директор продаж" },
+  { key: "rop",     label: "РОП" },
+  { key: "owners",  label: "Собственники" },
+  { key: "office",  label: "Офис-менеджер" },
+  { key: "qc",      label: "Контроль качества" },
+  { key: "hr",      label: "HR" },
+];
+
+function MotivationSection() {
+  const [tab, setTab] = React.useState<string>("payroll");
+  return (
+    <div style={{ padding: 24 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Мотивация</h2>
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #eee", marginBottom: 16, flexWrap: "wrap" }}>
+        {MOTIV_TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{ padding: "8px 14px", fontSize: 13, fontWeight: tab === t.key ? 600 : 400,
+              background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
+              color: tab === t.key ? MOTIV_ACCENT : MOTIV_MUTED,
+              borderBottom: tab === t.key ? `2px solid ${MOTIV_ACCENT}` : "2px solid transparent" }}>
+            {t.label}</button>
+        ))}
+      </div>
+      {tab === "payroll" && <MotivPayroll />}
+      {tab === "dir" && <MotivRole roleKey="Директор продаж" />}
+      {tab === "rop" && <MotivRole roleKey="РОП" />}
+      {tab === "owners" && <MotivOwners />}
+      {tab === "office" && <MotivKpi role="office-manager" />}
+      {tab === "qc" && <MotivKpi role="quality-control" />}
+      {tab === "hr" && <MotivHr />}
+    </div>
+  );
+}
+
+function MotivMonthSelect({ month, onChange }: { month: string; onChange: (m: string) => void }) {
+  return (
+    <select value={month} onChange={e => onChange(e.target.value)}
+      style={{ marginBottom: 12, padding: "4px 8px", fontFamily: "inherit", fontSize: 13 }}>
+      {MONTHS_RU.map(m => <option key={m} value={m}>{m}</option>)}
+    </select>
+  );
+}
+
+function MotivCard({ label, val }: { label: string; val: string }) {
+  return (
+    <div style={{ background: "#f6f6f6", borderRadius: 10, padding: "10px 16px", minWidth: 110 }}>
+      <div style={{ fontSize: 11, color: MOTIV_MUTED }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{val}</div>
+    </div>
+  );
+}
+
+function MotivPayroll() {
+  const [month, setMonth] = React.useState(currentMonthRu());
+  const [data, setData] = React.useState<any>(null);
+  const [year, setYear] = React.useState<any>(null);
+  React.useEffect(() => {
+    setData(null);
+    fetch(`${API}/api/motivation/payroll?month=${encodeURIComponent(month)}`)
+      .then(r => r.json()).then(setData).catch(() => setData({ empty: true }));
+  }, [month]);
+  React.useEffect(() => {
+    fetch(`${API}/api/motivation/payroll-year`).then(r => r.json()).then(setYear).catch(() => {});
+  }, []);
+  const FIELDS = ["oklad", "sdelka", "premia", "shtrafy", "itogo", "avans"];
+  const maxFot = year && year.fotByMonth ? Math.max(1, ...year.fotByMonth) : 1;
+  return (
+    <div>
+      <MotivMonthSelect month={month} onChange={setMonth} />
+      {(!data) ? <div style={{ color: MOTIV_MUTED }}>Загрузка…</div>
+        : data.empty ? <div style={{ color: MOTIV_MUTED }}>Нет данных за {month}</div> : (
+        <>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <MotivCard label="Сотрудников" val={String(data.summary.headcount)} />
+            <MotivCard label="ФОТ" val={money0(data.summary.fot)} />
+            <MotivCard label="Оклады" val={money0(data.summary.oklad)} />
+            <MotivCard label="Сделка" val={money0(data.summary.sdelka)} />
+            <MotivCard label="Премия" val={money0(data.summary.premia)} />
+            <MotivCard label="Штрафы" val={money0(data.summary.shtrafy)} />
+          </div>
+          {data.departments.map((d: any) => (
+            <div key={d.name} style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, margin: "8px 0" }}>{d.name}</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead><tr style={{ color: MOTIV_MUTED }}>
+                  <th style={{ textAlign: "left", padding: 4 }}>Сотрудник</th>
+                  {["Оклад", "Сделка", "Премия", "Штрафы", "Итого", "Аванс"].map(h => (
+                    <th key={h} style={{ textAlign: "right", padding: 4 }}>{h}</th>))}</tr></thead>
+                <tbody>
+                  {d.rows.map((e: any) => (
+                    <tr key={e.fio}>
+                      <td style={{ padding: 4 }}>{e.fio}<span style={{ color: MOTIV_MUTED }}> · {e.position}</span></td>
+                      {FIELDS.map(f => (
+                        <td key={f} style={{ textAlign: "right", padding: 4 }}>{e[f] ? money0(e[f]) : "—"}</td>))}
+                    </tr>
+                  ))}
+                  <tr style={{ fontWeight: 700, borderTop: "1px solid #eee" }}>
+                    <td style={{ padding: 4 }}>Итого</td>
+                    {FIELDS.map(f => (
+                      <td key={f} style={{ textAlign: "right", padding: 4 }}>{money0(d.subtotal[f])}</td>))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </>
+      )}
+      {year && year.fotByMonth && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>ФОТ по месяцам (год)</div>
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 120, maxWidth: 900 }}>
+            {year.fotByMonth.map((v: number, i: number) => (
+              <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div title={money0(v)} style={{ height: `${Math.max(2, (v / maxFot) * 100)}%`,
+                  background: i === new Date().getMonth() ? MOTIV_ACCENT : "#cfe0d9", borderRadius: 3 }} />
+                <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{MONTHS_RU[i].slice(0, 3)}</div>
+              </div>
+            ))}
+          </div>
+          {year.byDepartment?.length > 0 && (
+            <table style={{ borderCollapse: "collapse", fontSize: 12, marginTop: 12, minWidth: 700 }}>
+              <thead><tr><th style={{ textAlign: "left", padding: 4 }}>ФОТ по отделам</th>
+                {MONTHS_RU.map((m, i) => (
+                  <th key={i} style={{ textAlign: "right", padding: 4, color: MOTIV_MUTED }}>{m.slice(0, 3)}</th>))}</tr></thead>
+              <tbody>
+                {year.byDepartment.map((d: any) => (
+                  <tr key={d.name}><td style={{ padding: 4 }}>{d.name}</td>
+                    {d.values.map((v: number, i: number) => (
+                      <td key={i} style={{ textAlign: "right", padding: 4 }}>{v ? money0(v) : "—"}</td>))}</tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MotivRole({ roleKey }: { roleKey: string }) {
+  const [data, setData] = React.useState<any>(null);
+  React.useEffect(() => {
+    fetch(`${API}/api/motivation/roles`).then(r => r.json()).then(setData).catch(() => setData({ roles: [] }));
+  }, []);
+  if (!data) return <div style={{ color: MOTIV_MUTED }}>Загрузка…</div>;
+  const role = (data.roles || []).find((r: any) => r.role === roleKey);
+  if (!role || !role.months?.length) return <div style={{ color: MOTIV_MUTED }}>Нет данных</div>;
+  const cur = currentMonthRu();
+  const maxBonus = Math.max(1, ...role.months.map((m: any) => m.total || 0));
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <div style={{ color: MOTIV_MUTED, marginBottom: 8 }}>{role.person}</div>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 80, maxWidth: 700, marginBottom: 16 }}>
+        {role.months.map((m: any, i: number) => (
+          <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div title={money0(m.total)} style={{ height: `${Math.max(2, ((m.total || 0) / maxBonus) * 100)}%`,
+              background: m.month === cur ? MOTIV_ACCENT : "#cfe0d9", borderRadius: 3 }} />
+            <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{m.month.slice(0, 3)}</div>
+          </div>
+        ))}
+      </div>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 800 }}>
+        <thead><tr style={{ color: MOTIV_MUTED }}>
+          <th style={{ textAlign: "left", padding: 4 }}>Месяц</th>
+          {["Фикс", "План откр.", "Факт", "%", "Бонус", "План закр.", "Факт", "%", "Бонус", "ИТОГО"].map((h, i) => (
+            <th key={i} style={{ textAlign: "right", padding: 4 }}>{h}</th>))}</tr></thead>
+        <tbody>
+          {role.months.map((m: any) => (
+            <tr key={m.month} style={{ fontWeight: m.month === cur ? 700 : 400,
+              background: m.month === cur ? "#eef5f2" : "none" }}>
+              <td style={{ padding: 4 }}>{m.month}</td>
+              {["fix", "openPlan", "openFact", "openPct", "openBonus", "closePlan", "closeFact", "closePct", "closeBonus", "total"]
+                .map(f => (
+                  <td key={f} style={{ textAlign: "right", padding: 4 }}>
+                    {f.includes("Pct") ? (m[f] ? m[f] + "%" : "—") : (m[f] ? money0(m[f]) : "—")}</td>))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MotivOwners() {
+  const [d, setD] = React.useState<any>(null);
+  React.useEffect(() => {
+    fetch(`${API}/api/motivation/owners`).then(r => r.json()).then(setD).catch(() => setD({ empty: true }));
+  }, []);
+  if (!d) return <div style={{ color: MOTIV_MUTED }}>Загрузка…</div>;
+  if (d.empty) return <div style={{ color: MOTIV_MUTED }}>Нет данных</div>;
+  const curIdx = new Date().getMonth();
+  const rowsSpec: [string, number[]][] = [
+    ["Чистая прибыль (план)", d.netProfit.plan],
+    ["Чистая прибыль (факт)", d.netProfit.fact],
+    ["Дивиденды начислено (план)", d.dividendsAccrued.plan],
+    ["Дивиденды начислено (факт)", d.dividendsAccrued.fact],
+    ["Дивиденды выплачено (ДДС)", d.dividendsPaid],
+    ["Вклады собственников", d.ownerContributions],
+  ];
+  const maxNp = Math.max(1, ...d.netProfit.plan, ...d.netProfit.fact);
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>Чистая прибыль: план vs факт</div>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 100, maxWidth: 900, marginBottom: 16 }}>
+        {d.months.map((m: string, i: number) => (
+          <div key={i} style={{ flex: 1, textAlign: "center" }}>
+            <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 84 }}>
+              <div title={`план ${money0(d.netProfit.plan[i])}`}
+                style={{ flex: 1, height: `${Math.max(2, (d.netProfit.plan[i] / maxNp) * 100)}%`, background: "#cfe0d9", borderRadius: 2 }} />
+              <div title={`факт ${money0(d.netProfit.fact[i])}`}
+                style={{ flex: 1, height: `${Math.max(2, (d.netProfit.fact[i] / maxNp) * 100)}%`,
+                  background: i === curIdx ? MOTIV_ACCENT : "#7fae9c", borderRadius: 2 }} />
+            </div>
+            <div style={{ fontSize: 10, color: MOTIV_MUTED, marginTop: 4 }}>{m.slice(0, 3)}</div>
+          </div>
+        ))}
+      </div>
+      <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: 900 }}>
+        <thead><tr><th style={{ textAlign: "left", padding: 4 }}></th>
+          {d.months.map((m: string, i: number) => (
+            <th key={i} style={{ textAlign: "right", padding: 4, color: i === curIdx ? MOTIV_ACCENT : MOTIV_MUTED,
+              fontWeight: i === curIdx ? 700 : 500 }}>{m.slice(0, 3)}</th>))}</tr></thead>
+        <tbody>
+          {rowsSpec.map(([label, arr]) => (
+            <tr key={label}><td style={{ padding: 4, whiteSpace: "nowrap" }}>{label}</td>
+              {arr.map((n, i) => (
+                <td key={i} style={{ textAlign: "right", padding: 4,
+                  color: n < 0 ? "#c0392b" : "#111", whiteSpace: "nowrap" }}>{n ? money0(n) : "—"}</td>))}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MotivKpi({ role }: { role: string }) {
+  const [month, setMonth] = React.useState(currentMonthRu());
+  const [d, setD] = React.useState<any>(null);
+  React.useEffect(() => {
+    setD(null);
+    fetch(`${API}/api/motivation/kpi?role=${role}&month=${encodeURIComponent(month)}`)
+      .then(r => r.json()).then(setD).catch(() => setD({ empty: true }));
+  }, [role, month]);
+  return (
+    <div>
+      <MotivMonthSelect month={month} onChange={setMonth} />
+      {!d ? <div style={{ color: MOTIV_MUTED }}>Загрузка…</div>
+        : d.empty ? <div style={{ color: MOTIV_MUTED }}>Нет данных за {month}</div> : (
+        <>
+          <div style={{ color: MOTIV_MUTED, marginBottom: 8 }}>{d.person}</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            {([["Оклад", d.fact?.oklad], ["К1", d.fact?.k1], ["К2", d.fact?.k2],
+               ["К3", d.fact?.k3], ["ИТОГО", d.fact?.itogo]] as [string, number][])
+              .filter(([, v]) => v)
+              .map(([l, v]) => <MotivCard key={l} label={l} val={money0(v)} />)}
+          </div>
+          {(d.kpis || []).length > 0 && (
+            <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+              <thead><tr style={{ color: MOTIV_MUTED }}>
+                <th style={{ textAlign: "left", padding: 4 }}>KPI</th>
+                {["План", "Факт", "%", "Коэфф."].map(h => (
+                  <th key={h} style={{ textAlign: "right", padding: 4 }}>{h}</th>))}</tr></thead>
+              <tbody>
+                {d.kpis.map((k: any, i: number) => (
+                  <tr key={i}><td style={{ padding: 4 }}>{k.name}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{money0(k.plan)}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{money0(k.fact)}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.pct || "—"}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.coef}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function MotivHr() {
+  const [month, setMonth] = React.useState(currentMonthRu());
+  const [d, setD] = React.useState<any>(null);
+  React.useEffect(() => {
+    setD(null);
+    fetch(`${API}/api/hr/salary?month=${encodeURIComponent(month)}`)
+      .then(r => r.json()).then(setD).catch(() => setD({ empty: true }));
+  }, [month]);
+  return (
+    <div>
+      <div style={{ color: MOTIV_MUTED, marginBottom: 8 }}>Мотивация HR-менеджера (Юлия)</div>
+      <MotivMonthSelect month={month} onChange={setMonth} />
+      {!d ? <div style={{ color: MOTIV_MUTED }}>Загрузка…</div>
+        : (d.empty || !d.salary) ? <div style={{ color: MOTIV_MUTED }}>Нет данных за {month}</div> : (
+        <>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+            <MotivCard label="Оклад" val={money0(d.salary.oklad)} />
+            <MotivCard label="Премия (100%)" val={money0(d.salary.premia)} />
+            <MotivCard label="Факт премии" val={money0(d.totals?.fact_premii)} />
+            <MotivCard label="Итого ФОТ" val={money0(d.totals?.total_fot)} />
+            <MotivCard label="Выполнение" val={`${d.overall_pct ?? 0}%`} />
+          </div>
+          {d.plan_text && <div style={{ color: MOTIV_MUTED, fontSize: 13, marginBottom: 12 }}>{d.plan_text}</div>}
+          {(d.kpi || []).length > 0 && (
+            <table style={{ borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
+              <thead><tr style={{ color: MOTIV_MUTED }}>
+                <th style={{ textAlign: "left", padding: 4 }}>KPI</th>
+                {["Вес", "План", "Факт", "%", "Премия"].map(h => (
+                  <th key={h} style={{ textAlign: "right", padding: 4 }}>{h}</th>))}</tr></thead>
+              <tbody>
+                {d.kpi.map((k: any, i: number) => (
+                  <tr key={i}><td style={{ padding: 4 }}>{k.name}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.weight}%</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.plan}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.fact}</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{k.pct}%</td>
+                    <td style={{ textAlign: "right", padding: 4 }}>{money0(k.fact_premii)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {(d.smart_tasks || []).length > 0 && (
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>SMART-задачи</div>
+              {d.smart_tasks.map((t: string, i: number) => (
+                <div key={i} style={{ fontSize: 13, padding: "2px 0" }}>{t}</div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 // ── New Direction Modal ──────────────────────────────────────────────────────
 function NewDirectionModal({ onSave, onClose }: { onSave: (d: Direction) => void; onClose: () => void }) {
@@ -4409,6 +4751,7 @@ export default function Dashboard() {
 
         {activeTab === "weekly" && <HRDashboard />}
         {activeTab === "finance" && <FinanceSection />}
+        {activeTab === "motivation" && <MotivationSection />}
         {activeTab === "legal" && <LegalSection />}
         {activeTab === "legal_processes" && <LegalProcessesSection />}
         {activeTab === "competitors" && <MarketSection />}
