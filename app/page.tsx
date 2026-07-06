@@ -1355,15 +1355,16 @@ function SupportTable() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<"all" | "Меркулова" | "Добрицкая">("all");
+  const [month, setMonth] = React.useState<string | null>(null); // null = самый свежий месяц
 
-  const load = () => {
+  const load = (m: string | null = month) => {
     setLoading(true); setError(null);
-    fetch(`${API}/api/support/deals`)
+    fetch(`${API}/api/support/deals${m ? `?month=${encodeURIComponent(m)}` : ""}`)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setError("Нет соединения с сервером"); setLoading(false); });
   };
-  React.useEffect(() => { load(); }, []);
+  React.useEffect(() => { load(); }, [month]);
 
   const RISK_COLOR: Record<string, string> = { green: "#22c55e", yellow: "#f59e0b", red: "#e53e3e", gray: "#d1d5db" };
   const RISK_BG:    Record<string, string> = { green: "#f0fdf4", yellow: "#fffbeb", red: "#fef2f2", gray: "#f9fafb" };
@@ -1374,7 +1375,7 @@ function SupportTable() {
   const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 12, borderBottom: "1px solid #f5f5f5", verticalAlign: "middle" };
 
   if (loading) return <div style={{ color: "#bbb", padding: 60, textAlign: "center" }}>Загрузка данных из Google Sheets…</div>;
-  if (error)   return <div style={{ color: "#e53e3e", padding: 60, textAlign: "center" }}>{error}<br /><button onClick={load} style={{ marginTop: 12, padding: "6px 16px", borderRadius: 8, border: "1px solid #ebebeb", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Попробовать снова</button></div>;
+  if (error)   return <div style={{ color: "#e53e3e", padding: 60, textAlign: "center" }}>{error}<br /><button onClick={() => load()} style={{ marginTop: 12, padding: "6px 16px", borderRadius: 8, border: "1px solid #ebebeb", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Попробовать снова</button></div>;
 
   const s = data.summary;
   const deals = filter === "all" ? data.deals : data.deals.filter((d: any) => d.executor.trim().toLowerCase() === filter.toLowerCase());
@@ -1385,9 +1386,9 @@ function SupportTable() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 600, color: "#111" }}>Отдел сопровождения</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Google Sheets · «Прогноз июнь» · {s.total_deals} сделок</div>
+          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Google Sheets · «{data.sheet_title || "Прогноз"}» · {s.total_deals} сделок</div>
         </div>
-        <button onClick={load} style={{ background: "none", border: "1px solid #ebebeb", borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "#888", fontFamily: "inherit" }}>↻ Обновить</button>
+        <button onClick={() => load()} style={{ background: "none", border: "1px solid #ebebeb", borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "#888", fontFamily: "inherit" }}>↻ Обновить</button>
       </div>
 
       {/* Метрики */}
@@ -1407,6 +1408,21 @@ function SupportTable() {
           </div>
         ))}
       </div>
+
+      {/* Переключатель месяца */}
+      {data.months && data.months.length > 1 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {data.months.map((m: string) => (
+            <button key={m} onClick={() => setMonth(m)}
+              style={{ padding: "5px 14px", borderRadius: 20, border: "1px solid", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
+                borderColor: data.month === m ? "#111" : "#e0e0e0",
+                background: data.month === m ? "#111" : "#fff",
+                color: data.month === m ? "#fff" : "#555", fontWeight: data.month === m ? 600 : 400 }}>
+              {m}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Фильтр по сопровожденцу */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -3540,6 +3556,252 @@ function FinanceSection() {
   );
 }
 
+// ── Expenses Section (Расходы компании — ОПиУ) ───────────────────────────────
+function ExpensesSection() {
+  const MUTED = "#9a7d76";
+  const ACCENT = "#1A6B52";
+  const RED = "#c0392b";
+  const [data, setData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [mSel, setMSel] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    fetch(`${API}/api/finance/expenses`).then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  if (loading) return <div style={{ padding: 24, color: MUTED }}>Загрузка…</div>;
+  if (!data || data.empty) return <div style={{ padding: 24, color: MUTED }}>Нет данных ОПиУ</div>;
+
+  const f = data.fact, p = data.plan;
+  const last: number = data.lastFactIdx;
+  const i = mSel ?? last;
+  const money = (n: number) => (n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+  const mln = (n: number) => (n / 1e6).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " млн";
+  const pct1 = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + "%";
+  const expTotal = (b: any, j: number) =>
+    (b.nds[j] || 0) + b.groups.reduce((s: number, g: any) => s + (g.total[j] || 0), 0) + (b.belowExpense[j] || 0);
+  const rent = (b: any, j: number) => (b.revenue[j] ? (b.netProfit[j] / b.revenue[j]) * 100 : 0);
+
+  // ── KPI за месяц ──
+  const kpis = [
+    { label: "Выручка", fact: f.revenue[i], plan: p.revenue[i], prev: i > 0 ? f.revenue[i - 1] : null, moreIsGood: true },
+    { label: "Все расходы", fact: expTotal(f, i), plan: expTotal(p, i), prev: i > 0 ? expTotal(f, i - 1) : null, moreIsGood: false },
+    { label: "Чистая прибыль", fact: f.netProfit[i], plan: p.netProfit[i], prev: i > 0 ? f.netProfit[i - 1] : null, moreIsGood: true },
+    { label: "Рентабельность по ЧП", fact: rent(f, i), plan: rent(p, i), prev: i > 0 ? rent(f, i - 1) : null, moreIsGood: true, isPct: true },
+  ];
+
+  // ── Водопад месяца ──
+  const wf: { label: string; delta: number }[] = [
+    { label: "Выручка", delta: f.revenue[i] },
+    { label: "НДС", delta: -f.nds[i] },
+    { label: "Отдел продаж", delta: -(f.groups.find((g: any) => g.key === "sales")?.total[i] || 0) },
+    { label: "Маркетинг", delta: -(f.groups.find((g: any) => g.key === "marketing")?.total[i] || 0) },
+    { label: "Постоянные", delta: -(f.groups.find((g: any) => g.key === "fixed")?.total[i] || 0) },
+    { label: "Налог УСН", delta: -f.belowExpense[i] },
+  ];
+  if (f.belowIncome[i]) wf.push({ label: "Проценты банка", delta: f.belowIncome[i] });
+  wf.push({ label: "Чистая прибыль", delta: 0 }); // итоговый столбик, высота = остаток
+  const wfMax = Math.max(1, f.revenue[i]);
+  const WF_H = 190, WF_TOP = 20, WF_W = 900, wfBar = WF_W / wf.length;
+
+  // ── Динамика по месяцам ──
+  const dynIdx = Array.from({ length: last + 1 }, (_, j) => j);
+  const dynMax = Math.max(1, ...dynIdx.map(j => f.revenue[j]));
+  const DY_H = 200, DY_W = 900, dyCol = DY_W / dynIdx.length;
+  const rentMax = Math.max(10, ...dynIdx.map(j => rent(f, j)));
+
+  const card: React.CSSProperties = { background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "16px 20px" };
+  const h3: React.CSSProperties = { fontSize: 15, fontWeight: 700, margin: "28px 0 10px" };
+  const dev = (fact: number, plan: number, moreIsGood: boolean) => {
+    if (!plan) return null;
+    const r = (fact / plan) * 100;
+    const good = moreIsGood ? r >= 100 : r <= 100;
+    return <span style={{ color: good ? ACCENT : RED, fontWeight: 600 }}>{Math.round(r)}% плана</span>;
+  };
+
+  return (
+    <div style={{ padding: 24, maxWidth: 980 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Расходы компании</h2>
+        <div style={{ fontSize: 11, color: MUTED }}>живые данные из ОПиУ · обновляется само</div>
+      </div>
+
+      {/* Селектор месяца */}
+      <div style={{ display: "flex", gap: 6, margin: "14px 0 18px", flexWrap: "wrap" }}>
+        {data.months.map((m: string, j: number) => {
+          const has = j <= last && (f.revenue[j] > 0 || expTotal(f, j) > 0);
+          const active = j === i;
+          return (
+            <button key={m} disabled={!has} onClick={() => setMSel(j)}
+              style={{ background: active ? ACCENT : "#fff", color: active ? "#fff" : has ? "#444" : "#ccc",
+                border: "1px solid " + (active ? ACCENT : "#e0e0e0"), borderRadius: 20, padding: "4px 12px",
+                fontSize: 12, cursor: has ? "pointer" : "default", fontFamily: "inherit" }}>{m}</button>
+          );
+        })}
+      </div>
+
+      {/* KPI */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        {kpis.map(k => (
+          <div key={k.label} style={card}>
+            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.5px" }}>
+              {k.isPct ? pct1(k.fact) : money(k.fact)}
+            </div>
+            <div style={{ fontSize: 12, marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {dev(k.fact, k.plan, k.moreIsGood)}
+              {k.prev != null && k.prev !== 0 && (
+                <span style={{ color: MUTED }}>
+                  {k.fact >= k.prev ? "▲" : "▼"} {k.isPct
+                    ? pct1(Math.abs(k.fact - k.prev))
+                    : mln(Math.abs(k.fact - k.prev))} к пред. мес.
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Водопад */}
+      <h3 style={h3}>Куда ушли деньги — {data.months[i]}</h3>
+      <svg viewBox={`0 0 ${WF_W} ${WF_TOP + WF_H + 40}`} style={{ width: "100%", maxWidth: 900 }}>
+        {(() => {
+          let run = 0;
+          return wf.map((s, k) => {
+            const isFirst = k === 0, isLast = k === wf.length - 1;
+            const start = isFirst ? 0 : run;
+            if (isFirst) run = s.delta; else run += s.delta;
+            const top = isLast ? run : Math.max(start, run);
+            const h = isLast ? run : Math.abs(s.delta);
+            const y = WF_TOP + WF_H - (top / wfMax) * WF_H;
+            const hh = Math.max(2, (h / wfMax) * WF_H);
+            const fill = isFirst ? ACCENT : isLast ? "#0e4a38" : s.delta >= 0 ? "#7fb3a3" : "#dcaaa2";
+            const x = k * wfBar + wfBar * 0.12, w = wfBar * 0.76;
+            return (
+              <g key={s.label}>
+                <rect x={x} y={y} width={w} height={hh} rx={4} fill={fill} />
+                <text x={x + w / 2} y={y - 5} textAnchor="middle" fontSize={11} fontWeight={600}
+                  fill={isFirst || isLast ? ACCENT : "#8a6a64"}>
+                  {isFirst || isLast ? mln(h) : (s.delta > 0 ? "+" : "−") + mln(Math.abs(s.delta))}
+                </text>
+                <text x={x + w / 2} y={WF_TOP + WF_H + 16} textAnchor="middle" fontSize={10.5} fill={MUTED}>{s.label}</text>
+              </g>
+            );
+          });
+        })()}
+      </svg>
+
+      {/* Структура расходов */}
+      <h3 style={h3}>Структура расходов — {data.months[i]}: факт против плана</h3>
+      <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>Красным — перерасход к плану больше 15%</div>
+      {f.groups.map((g: any) => {
+        const pg = p.groups.find((x: any) => x.key === g.key) || { total: [], items: [] };
+        const items = g.items
+          .map((it: any) => {
+            const pit = pg.items?.find((x: any) => x.label === it.label);
+            return { label: it.label, fact: it.values[i] || 0, plan: pit?.values[i] || 0 };
+          })
+          .filter((it: any) => it.fact || it.plan)
+          .sort((a: any, b: any) => b.fact - a.fact);
+        const gf = g.total[i] || 0, gp = pg.total?.[i] || 0;
+        return (
+          <div key={g.key} style={{ ...card, padding: 0, marginBottom: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
+              padding: "12px 20px", background: "#eef5f2", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{g.name}</div>
+              <div style={{ fontSize: 13 }}>
+                <b>{money(gf)}</b>
+                <span style={{ color: MUTED }}> · {pct1(f.revenue[i] ? gf / f.revenue[i] * 100 : 0)} выручки · план {money(gp)} · </span>
+                <span style={{ color: gp && gf > gp ? RED : ACCENT, fontWeight: 600 }}>
+                  {gp ? (gf > gp ? "+" : "−") + money(Math.abs(gf - gp)) : "—"}
+                </span>
+              </div>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ color: MUTED }}>
+                  <th style={{ textAlign: "left", padding: "6px 20px", fontWeight: 500 }}>Статья</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", fontWeight: 500 }}>Факт</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", fontWeight: 500 }}>% выручки</th>
+                  <th style={{ textAlign: "right", padding: "6px 8px", fontWeight: 500 }}>План</th>
+                  <th style={{ textAlign: "right", padding: "6px 20px 6px 8px", fontWeight: 500 }}>Отклонение</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it: any) => {
+                  const over = it.plan > 0 && it.fact > it.plan * 1.15;
+                  const diff = it.fact - it.plan;
+                  return (
+                    <tr key={it.label} style={{ borderTop: "1px solid #f5f5f5", background: over ? "#fdf3f1" : "none" }}>
+                      <td style={{ padding: "6px 20px" }}>{it.label}</td>
+                      <td style={{ textAlign: "right", padding: "6px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>{money(it.fact)}</td>
+                      <td style={{ textAlign: "right", padding: "6px 8px", color: MUTED }}>{pct1(f.revenue[i] ? it.fact / f.revenue[i] * 100 : 0)}</td>
+                      <td style={{ textAlign: "right", padding: "6px 8px", color: MUTED, whiteSpace: "nowrap" }}>{it.plan ? money(it.plan) : "—"}</td>
+                      <td style={{ textAlign: "right", padding: "6px 20px 6px 8px", whiteSpace: "nowrap",
+                        color: !it.plan ? MUTED : diff > 0 ? RED : ACCENT, fontWeight: over ? 700 : 500 }}>
+                        {it.plan ? (diff > 0 ? "+" : "−") + money(Math.abs(diff)) + (over ? ` (×${(it.fact / it.plan).toLocaleString("ru-RU", { maximumFractionDigits: 1 })})` : "") : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+
+      {/* Динамика */}
+      <h3 style={h3}>Динамика по месяцам</h3>
+      <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>
+        <span style={{ color: ACCENT }}>■</span> выручка&nbsp;&nbsp;<span style={{ color: "#dcaaa2" }}>■</span> все расходы&nbsp;&nbsp;
+        <span style={{ color: "#b8860b" }}>―</span> рентабельность по ЧП
+      </div>
+      <svg viewBox={`0 0 ${DY_W} ${DY_H + 34}`} style={{ width: "100%", maxWidth: 900 }}>
+        {dynIdx.map(j => {
+          const rv = f.revenue[j], ex = expTotal(f, j);
+          const x = j * dyCol;
+          const bw = dyCol * 0.3;
+          return (
+            <g key={j} opacity={j === i ? 1 : 0.82}>
+              <rect x={x + dyCol * 0.14} y={DY_H - rv / dynMax * DY_H} width={bw} height={Math.max(2, rv / dynMax * DY_H)} rx={3} fill={ACCENT} />
+              <rect x={x + dyCol * 0.14 + bw + 3} y={DY_H - ex / dynMax * DY_H} width={bw} height={Math.max(2, ex / dynMax * DY_H)} rx={3} fill="#dcaaa2" />
+              <text x={x + dyCol / 2} y={DY_H + 14} textAnchor="middle" fontSize={11}
+                fontWeight={j === i ? 700 : 400} fill={j === i ? ACCENT : MUTED}>{data.months[j].slice(0, 3)}</text>
+              <text x={x + dyCol / 2} y={DY_H + 28} textAnchor="middle" fontSize={10} fill="#b8860b">{pct1(rent(f, j))}</text>
+            </g>
+          );
+        })}
+        <polyline fill="none" stroke="#b8860b" strokeWidth={2}
+          points={dynIdx.map(j => `${j * dyCol + dyCol / 2},${DY_H - rent(f, j) / rentMax * (DY_H * 0.85)}`).join(" ")} />
+        {dynIdx.map(j => (
+          <circle key={j} cx={j * dyCol + dyCol / 2} cy={DY_H - rent(f, j) / rentMax * (DY_H * 0.85)} r={3} fill="#b8860b" />
+        ))}
+      </svg>
+
+      {/* Фонды */}
+      <h3 style={h3}>Прибыль с начала года и фонды</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div style={{ ...card, background: "#eef5f2", border: "1px solid #d5e6df" }}>
+          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>ЧП накопленным итогом</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: ACCENT, letterSpacing: "-0.5px" }}>{money(f.netProfitCum[last])}</div>
+          <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>январь — {data.months[last].toLowerCase()}</div>
+        </div>
+        {[
+          { label: "Ф: Дивиденды 70%", arr: f.funds.dividends },
+          { label: "Ф: Резервный 25%", arr: f.funds.reserve },
+          { label: "Ф: Корпоративы 5%", arr: f.funds.corporate },
+        ].map(fd => (
+          <div key={fd.label} style={card}>
+            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{fd.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.5px" }}>{money(fd.arr.reduce((s: number, v: number) => s + v, 0))}</div>
+            <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>начислено за год</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Motivation Section (Мотивация) ───────────────────────────────────────────
 const MOTIV_MUTED = "#9a7d76";
 const MOTIV_ACCENT = "#1A6B52";
@@ -4820,7 +5082,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "team" && <TeamSection />}
-        {activeTab === "brokers" && <PlaceholderSection label="Расходы компании" />}
+        {activeTab === "brokers" && <ExpensesSection />}
         {activeTab === "rnp" && <RnpEfficiencySection />}
 
         {activeTab === "weekly" && <HRDashboard />}
