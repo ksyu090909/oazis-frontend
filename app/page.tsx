@@ -2790,10 +2790,12 @@ type LegalQuestion = {
 
 const LP_CATEGORIES: { key: string; label: string }[] = [
   { key: "clients",       label: "Клиенты / сделки" },
-  { key: "personal_data", label: "Персданные" },
+  { key: "personal_data", label: "Кадры" },
   { key: "hr",            label: "HR" },
   { key: "product",       label: "Продукт" },
-  { key: "other",         label: "Прочее" },
+  { key: "agency",          label: "Агентские" },
+  { key: "agency_contract", label: "Агентские договора" },
+  { key: "other",           label: "Прочее" },
 ];
 
 const LP_STATUSES: { key: string; label: string }[] = [
@@ -3062,15 +3064,192 @@ function HRAnalyticsView() {
           return (
             <div key={i} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "16px 20px", display: "flex", gap: 14 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.dot, marginTop: 6, flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 4 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: "#444", lineHeight: 1.55 }}>{f.text}</div>
+              <div style={{ display: "flex", gap: 20, flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ flex: "1 1 320px", minWidth: 240 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 4 }}>{f.title}</div>
+                  <div style={{ fontSize: 13, color: "#444", lineHeight: 1.55 }}>{f.text}</div>
+                </div>
+                {f.chart && (
+                  <div style={{ flex: "0 0 auto" }}>
+                    <HRFindingChart chart={f.chart} tone={t} />
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+// ── HR · мини-графики для карточек-выводов ─────────────────────────────────
+
+function HRFindingChart({ chart, tone }: { chart: any; tone: { color: string; dot: string; border: string; bg: string } }) {
+  if (!chart) return null;
+  if (chart.type === "headcount") return <MiniHeadcount chart={chart} tone={tone} />;
+  if (chart.type === "gauge") return <MiniGauge chart={chart} />;
+  if (chart.type === "donut") return <MiniDonut chart={chart} tone={tone} />;
+  if (chart.type === "funnel") return <MiniFunnel chart={chart} tone={tone} />;
+  if (chart.type === "progress") return <MiniProgress chart={chart} tone={tone} />;
+  return null;
+}
+
+// цвет по порогам (для текучести): низкая — хорошо, высокая — плохо
+function gaugeColor(v: number, warn: number, bad: number) {
+  if (v >= bad) return "#ef4444";
+  if (v >= warn) return "#f59e0b";
+  return "#22c55e";
+}
+function polarPt(cx: number, cy: number, r: number, deg: number) {
+  const a = (deg * Math.PI) / 180;
+  return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+}
+
+// Динамика штата: линия численности + столбики принято/уволено
+function MiniHeadcount({ chart, tone }: { chart: any; tone: { dot: string } }) {
+  const W = 232, H = 96, padX = 10, padTop = 16, lineH = 42, barBand = 22, baseY = padTop + lineH;
+  const months: string[] = chart.months || [];
+  const staff: number[] = chart.staff || [];
+  const hired: number[] = chart.hired || [];
+  const fired: number[] = chart.fired || [];
+  const n = Math.max(months.length, 1);
+  const step = (W - padX * 2) / Math.max(n - 1, 1);
+  const colW = (W - padX * 2) / n;
+  const sMax = Math.max(...staff, 1);
+  const bMax = Math.max(...hired, ...fired, 1);
+  const sx = (i: number) => padX + step * i;
+  const sy = (v: number) => padTop + (1 - v / sMax) * lineH;
+  const pts = staff.map((v, i) => `${sx(i)},${sy(v)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} style={{ maxWidth: "100%", display: "block" }}>
+      <line x1={padX} y1={baseY} x2={W - padX} y2={baseY} stroke="#e5e7eb" strokeWidth={1} />
+      {/* столбики принято (вверх) / уволено (вниз) в нижней полосе */}
+      {months.map((_, i) => {
+        const cx = padX + colW * (i + 0.5);
+        const hbw = Math.min(6, colW * 0.28);
+        const hh = (hired[i] || 0) / bMax * (barBand - 2);
+        const fh = (fired[i] || 0) / bMax * (barBand - 2);
+        return (
+          <g key={i}>
+            <rect x={cx - hbw - 1} y={baseY - hh} width={hbw} height={Math.max(hh, hired[i] ? 1.5 : 0)} rx={1.5} fill="#22c55e" />
+            <rect x={cx + 1} y={baseY} width={hbw} height={Math.max(fh, fired[i] ? 1.5 : 0)} rx={1.5} fill="#ef4444" />
+          </g>
+        );
+      })}
+      <polyline points={pts} fill="none" stroke={tone.dot} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {staff.map((v, i) => (
+        <g key={i}>
+          <circle cx={sx(i)} cy={sy(v)} r={2.6} fill={tone.dot} />
+          {(i === 0 || i === staff.length - 1) && (
+            <text x={sx(i)} y={sy(v) - 6} textAnchor="middle" fontSize={9} fontWeight={700} fill="#374151">{v}</text>
+          )}
+        </g>
+      ))}
+      {months.map((m, i) => (
+        <text key={i} x={padX + colW * (i + 0.5)} y={H - 4} textAnchor="middle" fontSize={8.5} fill="#9ca3af">{m}</text>
+      ))}
+    </svg>
+  );
+}
+
+// Текучесть: полукруговой гейдж
+function MiniGauge({ chart }: { chart: any }) {
+  const W = 150, H = 96, cx = W / 2, cy = 74, r = 56, sw = 11;
+  const max = chart.max || 100;
+  const val = Math.max(0, Math.min(chart.value || 0, max));
+  const frac = val / max;
+  const col = gaugeColor(chart.value || 0, chart.warn ?? 30, chart.bad ?? 50);
+  const [bx0, by0] = polarPt(cx, cy, r, 180);
+  const [bx1, by1] = polarPt(cx, cy, r, 0);
+  const [vx, vy] = polarPt(cx, cy, r, 180 - frac * 180);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} style={{ maxWidth: "100%", display: "block" }}>
+      <path d={`M ${bx0} ${by0} A ${r} ${r} 0 0 1 ${bx1} ${by1}`} fill="none" stroke="#eceef1" strokeWidth={sw} strokeLinecap="round" />
+      <path d={`M ${bx0} ${by0} A ${r} ${r} 0 0 1 ${vx} ${vy}`} fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" />
+      <text x={cx} y={cy - 8} textAnchor="middle" fontSize={22} fontWeight={800} fill="#111">{chart.value}{chart.unit || ""}</text>
+      <text x={cx} y={cy + 8} textAnchor="middle" fontSize={9} fill="#9ca3af">{chart.caption || ""}</text>
+    </svg>
+  );
+}
+
+// Источники найма: кольцевая диаграмма
+function MiniDonut({ chart, tone }: { chart: any; tone: { dot: string } }) {
+  const segs: { label: string; value: number }[] = chart.segments || [];
+  const total = segs.reduce((s, x) => s + (x.value || 0), 0) || 1;
+  const R = 34, sw = 13, C = 2 * Math.PI * R;
+  const colors = [tone.dot, "#c7cdd6"];
+  let acc = 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <svg viewBox="0 0 84 84" width={84} style={{ display: "block" }}>
+        <g transform="rotate(-90 42 42)">
+          <circle cx={42} cy={42} r={R} fill="none" stroke="#eceef1" strokeWidth={sw} />
+          {segs.map((s, i) => {
+            const frac = (s.value || 0) / total;
+            const dash = frac * C;
+            const el = (
+              <circle key={i} cx={42} cy={42} r={R} fill="none" stroke={colors[i % colors.length]}
+                strokeWidth={sw} strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-acc * C} />
+            );
+            acc += frac;
+            return el;
+          })}
+        </g>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {segs.map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: colors[i % colors.length] }} />
+            {s.label} · {Math.round((s.value || 0) / total * 100)}%
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Воронка найма: горизонтальные полосы
+function MiniFunnel({ chart, tone }: { chart: any; tone: { dot: string } }) {
+  const stages: { label: string; value: number }[] = chart.stages || [];
+  const max = Math.max(...stages.map(s => s.value || 0), 1);
+  const rowH = 17, barMax = 118, labelW = 78;
+  const W = labelW + barMax + 34, H = stages.length * rowH + 6;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} style={{ maxWidth: "100%", display: "block" }}>
+      {stages.map((s, i) => {
+        const w = Math.max(((s.value || 0) / max) * barMax, s.value ? 3 : 0);
+        const y = i * rowH + 3;
+        return (
+          <g key={i}>
+            <text x={0} y={y + 10} fontSize={9.5} fill="#6b7280">{s.label}</text>
+            <rect x={labelW} y={y} width={barMax} height={12} rx={3} fill="#eef0f3" />
+            <rect x={labelW} y={y} width={w} height={12} rx={3} fill={tone.dot} opacity={0.85 - i * 0.11} />
+            <text x={labelW + barMax + 4} y={y + 10} fontSize={9.5} fontWeight={700} fill="#374151">{s.value}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// KPI: круговой прогресс
+function MiniProgress({ chart, tone }: { chart: any; tone: { dot: string } }) {
+  const max = chart.max || 100;
+  const val = Math.max(0, Math.min(chart.value || 0, max));
+  const frac = val / max;
+  const R = 38, sw = 12, C = 2 * Math.PI * R;
+  const col = frac >= 0.9 ? "#22c55e" : frac >= 0.6 ? tone.dot : "#f59e0b";
+  return (
+    <svg viewBox="0 0 92 92" width={92} style={{ display: "block", maxWidth: "100%" }}>
+      <g transform="rotate(-90 46 46)">
+        <circle cx={46} cy={46} r={R} fill="none" stroke="#eceef1" strokeWidth={sw} />
+        <circle cx={46} cy={46} r={R} fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round"
+          strokeDasharray={`${frac * C} ${C}`} />
+      </g>
+      <text x={46} y={44} textAnchor="middle" fontSize={19} fontWeight={800} fill="#111">{chart.value}{chart.unit || ""}</text>
+      <text x={46} y={58} textAnchor="middle" fontSize={8.5} fill="#9ca3af">{chart.caption || ""}</text>
+    </svg>
   );
 }
 
