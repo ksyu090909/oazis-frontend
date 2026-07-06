@@ -3054,6 +3054,24 @@ function HRAnalyticsView() {
           </div>
         ))}
       </div>
+      {/* Дашборд — визуальные метрики подбора */}
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Дашборд подбора</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 28 }}>
+        {data.findings.filter((f: any) => f.chart).map((f: any, i: number) => {
+          const t = TONE[f.tone] || TONE.warn;
+          const basis = f.chart.type === "headcount" ? "1 1 300px"
+            : f.chart.type === "funnel" ? "1 1 250px" : "1 1 190px";
+          return (
+            <div key={i} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "14px 16px", flex: basis, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11, color: t.color, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>{f.title}</div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <HRFindingChart chart={f.chart} tone={t} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Выводы по подбору</div>
       <div style={{ fontSize: 12, color: "#bbb", marginBottom: 16 }}>
         Сформированы строго по цифрам из таблиц · {data.month} {data.year}
@@ -3064,16 +3082,9 @@ function HRAnalyticsView() {
           return (
             <div key={i} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "16px 20px", display: "flex", gap: 14 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.dot, marginTop: 6, flexShrink: 0 }} />
-              <div style={{ display: "flex", gap: 20, flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ flex: "1 1 320px", minWidth: 240 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 4 }}>{f.title}</div>
-                  <div style={{ fontSize: 13, color: "#444", lineHeight: 1.55 }}>{f.text}</div>
-                </div>
-                {f.chart && (
-                  <div style={{ flex: "0 0 auto" }}>
-                    <HRFindingChart chart={f.chart} tone={t} />
-                  </div>
-                )}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 4 }}>{f.title}</div>
+                <div style={{ fontSize: 13, color: "#444", lineHeight: 1.55 }}>{f.text}</div>
               </div>
             </div>
           );
