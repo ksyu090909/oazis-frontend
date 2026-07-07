@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Surfaces & neutrals ── */
+  --bg: #fafafa;          /* page background */
+  --surface: #ffffff;      /* cards, panels */
+  --surface-2: #f6f6f7;    /* subtle raised / hover fill */
+  --border: #ececee;       /* default hairline */
+  --border-strong: #dedee1;/* emphasized divider / input border */
+
+  /* ── Text ink ramp ── */
+  --ink: #17181a;          /* primary text */
+  --ink-2: #55585e;        /* secondary text */
+  --muted: #83878e;        /* tertiary / captions (AA on white) */
+  --faint: #a9adb4;        /* faint labels, still ≥3:1 for large */
+
+  /* ── Brand — Oazis green ── */
+  --brand: #1a6b52;
+  --brand-hover: #155b45;
+  --brand-active: #0f4838;
+  --brand-soft: #e9f3ef;   /* tinted fill */
+  --brand-ink: #12503d;    /* brand text on light */
+  --brand-ring: rgba(26, 107, 82, 0.28);
+
+  /* ── Semantic — status ── */
+  --danger: #dc2626;
+  --danger-ink: #991b1b;
+  --danger-soft: #fef2f2;
+  --danger-border: #f7cccc;
+
+  --warn: #d97706;
+  --warn-ink: #92400e;
+  --warn-soft: #fff7ed;
+  --warn-border: #fde3b3;
+
+  --success: #16a34a;
+  --success-ink: #166534;
+  --success-soft: #f0fdf4;
+  --success-border: #bbf7d0;
+
+  --info: #4f46e5;
+  --info-ink: #3730a3;
+  --info-soft: #eef2ff;
+  --info-border: #d5d9fb;
+
+  /* ── Radius scale ── */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  /* ── Elevation ── */
+  --shadow-xs: 0 1px 2px rgba(16, 18, 20, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 18, 20, 0.06), 0 1px 2px rgba(16, 18, 20, 0.04);
+  --shadow-md: 0 6px 16px rgba(16, 18, 20, 0.08);
+  --shadow-lg: 0 16px 40px rgba(16, 18, 20, 0.12);
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 160ms;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

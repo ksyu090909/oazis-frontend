@@ -114,6 +114,32 @@ const NAV_ITEMS = [
 ];
 const DEPARTMENTS = NAV_ITEMS;
 
+// Единый набор навигационных иконок (line-стиль, наследуют currentColor от состояния)
+const NAV_ICON_PATHS: Record<string, React.ReactNode> = {
+  deals: (<><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></>),
+  sales: (<><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>),
+  support: (<><path d="M12 3l7 3v5c0 4.6-3.1 7.7-7 9-3.9-1.3-7-4.4-7-9V6z" /><path d="M9 12l2 2 4-4" /></>),
+  rnp: (<><path d="M3 12h4l2.5 7 4-14L16 12h5" /></>),
+  weekly: (<><circle cx="9" cy="8" r="3.4" /><path d="M3.4 20a5.8 5.8 0 0 1 11.2 0" /><path d="M15.8 12.6l1.7 1.7L21 11" /></>),
+  knowledge: (<><path d="M12 6.5C10.5 5.4 8.2 4.8 6 4.8c-1.4 0-2.4.3-3 .5v13c.6-.2 1.6-.5 3-.5 2.2 0 4.5.6 6 1.7 1.5-1.1 3.8-1.7 6-1.7 1.4 0 2.4.3 3 .5v-13c-.6-.2-1.6-.5-3-.5-2.2 0-4.5.6-6 1.7z" /><path d="M12 6.5V19" /></>),
+  finance: (<><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18" /><circle cx="16.5" cy="14.5" r="1.1" /></>),
+  motivation: (<><circle cx="12" cy="12" r="8.4" /><circle cx="12" cy="12" r="4.4" /><circle cx="12" cy="12" r="1" /></>),
+  brokers: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3 9.5h18" /><path d="M6.5 14.5h4" /></>),
+  team: (<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19.5a5.6 5.6 0 0 1 11 0" /><path d="M16 5.2a3.2 3.2 0 0 1 0 5.7" /><path d="M17.6 19.5a5.6 5.6 0 0 0-2.6-4.7" /></>),
+  legal: (<><path d="M12 4v16" /><path d="M7 8h10" /><path d="M7 8l-3 6a3 3 0 0 0 6 0z" /><path d="M17 8l3 6a3 3 0 0 1-6 0z" /><path d="M8.5 20h7" /></>),
+  legal_processes: (<><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 12.5h6" /><path d="M9 16h6" /></>),
+  competitors: (<><path d="M4 20V10.5" /><path d="M10 20V4" /><path d="M16 20v-6.5" /><path d="M3.5 20h17" /></>),
+};
+
+function NavIcon({ k }: { k: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {NAV_ICON_PATHS[k] ?? <circle cx="12" cy="12" r="8" />}
+    </svg>
+  );
+}
+
 const fmt = (n: number) =>
   n >= 1_000_000
     ? (n / 1_000_000).toFixed(1).replace(".0", "") + " млн"
@@ -5136,7 +5162,7 @@ export default function Dashboard() {
 
   const overdue = tasks.filter(t => t.deadline && t.deadline < today).length;
   return (
-    <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "'Inter', -apple-system, sans-serif", color: "#111", display: "flex" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--font-inter), -apple-system, sans-serif", color: "var(--ink)", display: "flex" }}>
 
       {/* ── Sidebar ── */}
       <aside style={{ width: 220, minHeight: "100vh", background: "#fff", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
