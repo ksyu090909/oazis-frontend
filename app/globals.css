@@ -82,6 +82,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Единая фокус-подсветка для всех интерактивных элементов */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px var(--brand-ring);
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

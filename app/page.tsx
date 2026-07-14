@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { ContentSprint } from "./content-sprint";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -22,7 +23,7 @@ function dirOrder(): string[] {
 
 const PRESET_COLORS = [
   "#7c3aed","#2563eb","#059669","#d97706","#db2777",
-  "#ea580c","#c026d3","#0891b2","#e53e3e","#6b7280",
+  "#ea580c","#c026d3","#0891b2","var(--danger)","#6b7280",
 ];
 
 // ── Месяцы ──────────────────────────────────────────────────────────────────
@@ -39,9 +40,9 @@ function monthsThrough(startIdx = 0): string[] {
 }
 
 const PRIORITY_OPTIONS = [
-  { value: "high", label: "Высокий", color: "#e53e3e" },
-  { value: "medium", label: "Средний", color: "#f6ad55" },
-  { value: "low", label: "Низкий", color: "#68d391" },
+  { value: "high", label: "Высокий", color: "var(--danger)" },
+  { value: "medium", label: "Средний", color: "var(--warn)" },
+  { value: "low", label: "Низкий", color: "var(--success)" },
 ];
 
 type Task = {
@@ -104,6 +105,7 @@ const NAV_ITEMS = [
   { key: "rnp",         label: "Эффективность компании", icon: "📋" },
   { key: "weekly",      label: "HR",              icon: "📅" },
   { key: "knowledge",   label: "Обучение",        icon: "📖" },
+  { key: "content",     label: "Контент",         icon: "🎬" },
   { key: "finance",     label: "Финансы",         icon: "₽"  },
   { key: "motivation",  label: "Мотивация",       icon: "🎯" },
   { key: "brokers",     label: "Расходы компании", icon: "💳" },
@@ -122,6 +124,7 @@ const NAV_ICON_PATHS: Record<string, React.ReactNode> = {
   rnp: (<><path d="M3 12h4l2.5 7 4-14L16 12h5" /></>),
   weekly: (<><circle cx="9" cy="8" r="3.4" /><path d="M3.4 20a5.8 5.8 0 0 1 11.2 0" /><path d="M15.8 12.6l1.7 1.7L21 11" /></>),
   knowledge: (<><path d="M12 6.5C10.5 5.4 8.2 4.8 6 4.8c-1.4 0-2.4.3-3 .5v13c.6-.2 1.6-.5 3-.5 2.2 0 4.5.6 6 1.7 1.5-1.1 3.8-1.7 6-1.7 1.4 0 2.4.3 3 .5v-13c-.6-.2-1.6-.5-3-.5-2.2 0-4.5.6-6 1.7z" /><path d="M12 6.5V19" /></>),
+  content: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M10 9.5l5 2.8-5 2.8z" /></>),
   finance: (<><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18" /><circle cx="16.5" cy="14.5" r="1.1" /></>),
   motivation: (<><circle cx="12" cy="12" r="8.4" /><circle cx="12" cy="12" r="4.4" /><circle cx="12" cy="12" r="1" /></>),
   brokers: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3 9.5h18" /><path d="M6.5 14.5h4" /></>),
@@ -137,6 +140,30 @@ function NavIcon({ k }: { k: string }) {
       strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {NAV_ICON_PATHS[k] ?? <circle cx="12" cy="12" r="8" />}
     </svg>
+  );
+}
+
+// Переиспользуемая карточка-метрика для сводных показателей
+function StatCard({ label, value, hint, tone = "default" }: {
+  label: string; value: React.ReactNode; hint?: string; tone?: "default" | "danger";
+}) {
+  const [hover, setHover] = useState(false);
+  const valueColor = tone === "danger" ? "var(--danger)" : "var(--ink)";
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-md)", padding: "18px 22px",
+        boxShadow: hover ? "var(--shadow-sm)" : "var(--shadow-xs)",
+        transition: "box-shadow var(--dur) var(--ease-out)",
+      }}
+    >
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.6px", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: valueColor, lineHeight: 1 }}>{value}</div>
+      {hint && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>{hint}</div>}
+    </div>
   );
 }
 
@@ -209,12 +236,12 @@ function TaskEditForm({ initial = {}, defaultDirection = "personal", onSave, onC
   };
 
   const inputStyle = {
-    width: "100%", border: "1px solid #e0e0e0", borderRadius: 6, padding: "6px 10px",
-    fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff", boxSizing: "border-box" as const,
+    width: "100%", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "6px 10px",
+    fontSize: 13, fontFamily: "inherit", outline: "none", background: "var(--surface)", color: "var(--ink)", boxSizing: "border-box" as const,
   };
 
   return (
-    <div style={{ background: "#f9f9f9", border: "1px solid #ddd", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ background: "var(--surface-2)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-sm)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
       <input ref={titleRef} value={title} onChange={e => setTitle(e.target.value)}
         placeholder="Название задачи" style={{ ...inputStyle, fontSize: 14, fontWeight: 500 }}
         onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }} />
@@ -244,11 +271,11 @@ function TaskEditForm({ initial = {}, defaultDirection = "personal", onSave, onC
             <button key={opt.value} type="button"
               onClick={() => { setRepeat(opt.value); if (opt.value !== "weekly") setRepeatDays([]); }}
               style={{
-                padding: "4px 10px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+                padding: "4px 10px", borderRadius: "var(--r-pill)", fontSize: 12, cursor: "pointer",
                 fontFamily: "inherit", border: "1.5px solid",
-                borderColor: repeat === opt.value ? "#111" : "#e0e0e0",
-                background: repeat === opt.value ? "#111" : "#fff",
-                color: repeat === opt.value ? "#fff" : "#555",
+                borderColor: repeat === opt.value ? "var(--ink)" : "var(--border-strong)",
+                background: repeat === opt.value ? "var(--ink)" : "var(--surface)",
+                color: repeat === opt.value ? "var(--surface)" : "var(--ink-2)",
                 fontWeight: repeat === opt.value ? 600 : 400,
               }}>
               {opt.label}
@@ -261,9 +288,9 @@ function TaskEditForm({ initial = {}, defaultDirection = "personal", onSave, onC
               <button key={d.key} type="button" onClick={() => toggleDay(d.key)}
                 style={{
                   width: 34, height: 34, borderRadius: "50%", border: "1.5px solid",
-                  borderColor: repeatDays.includes(d.key) ? "#111" : "#e0e0e0",
-                  background: repeatDays.includes(d.key) ? "#111" : "#fff",
-                  color: repeatDays.includes(d.key) ? "#fff" : "#777",
+                  borderColor: repeatDays.includes(d.key) ? "var(--brand)" : "var(--border-strong)",
+                  background: repeatDays.includes(d.key) ? "var(--brand)" : "var(--surface)",
+                  color: repeatDays.includes(d.key) ? "var(--surface)" : "var(--ink-2)",
                   fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
                 }}>
                 {d.label}
@@ -274,11 +301,11 @@ function TaskEditForm({ initial = {}, defaultDirection = "personal", onSave, onC
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={handleSave} disabled={!title.trim() || saving}
-          style={{ background: "#111", color: "#fff", border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ background: "var(--brand)", color: "var(--surface)", border: "none", borderRadius: "var(--r-xs)", padding: "7px 16px", fontSize: 13, fontWeight: 600, cursor: (!title.trim() || saving) ? "default" : "pointer", opacity: (!title.trim() || saving) ? 0.5 : 1, fontFamily: "inherit", transition: "opacity var(--dur) var(--ease-out)" }}>
           {saving ? "Сохранение…" : "Сохранить"}
         </button>
         <button onClick={onCancel}
-          style={{ background: "none", color: "#999", border: "1px solid #e0e0e0", borderRadius: 6, padding: "7px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ background: "var(--surface)", color: "var(--ink-2)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "7px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           Отмена
         </button>
       </div>
@@ -297,30 +324,30 @@ function PostponePopup({ current, onSelect, onClose }: { current?: string; onSel
   const [custom, setCustom] = useState(current || "");
 
   return (
-    <div style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, padding: 12, zIndex: 200, minWidth: 190, boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}>
+    <div style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-sm)", padding: 12, zIndex: 200, minWidth: 190, boxShadow: "var(--shadow-md)" }}>
       {options.map(o => {
         const v = o.date.toISOString().split("T")[0];
         return (
           <div key={v} onClick={() => { onSelect(v); onClose(); }}
-            style={{ padding: "7px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13, display: "flex", justifyContent: "space-between" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#f5f5f5")}
+            style={{ padding: "7px 10px", borderRadius: "var(--r-xs)", cursor: "pointer", fontSize: 13, display: "flex", justifyContent: "space-between", color: "var(--ink)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
             onMouseLeave={e => (e.currentTarget.style.background = "none")}>
             <span>{o.label}</span>
-            <span style={{ color: "#999", fontSize: 11 }}>{fmtDeadline(v)}</span>
+            <span style={{ color: "var(--muted)", fontSize: 11 }}>{fmtDeadline(v)}</span>
           </div>
         );
       })}
-      <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 6, paddingTop: 8 }}>
+      <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 8 }}>
         <input type="date" value={custom} onChange={e => setCustom(e.target.value)}
-          style={{ width: "100%", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", fontSize: 12, fontFamily: "inherit" }} />
+          style={{ width: "100%", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "5px 8px", fontSize: 12, fontFamily: "inherit", color: "var(--ink)" }} />
         {custom && (
           <button onClick={() => { onSelect(custom); onClose(); }}
-            style={{ marginTop: 6, width: "100%", background: "#111", color: "#fff", border: "none", borderRadius: 6, padding: "6px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ marginTop: 6, width: "100%", background: "var(--brand)", color: "var(--surface)", border: "none", borderRadius: "var(--r-xs)", padding: "6px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             Выбрать
           </button>
         )}
       </div>
-      <button onClick={onClose} style={{ marginTop: 4, width: "100%", background: "none", border: "none", color: "#bbb", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Закрыть</button>
+      <button onClick={onClose} style={{ marginTop: 4, width: "100%", background: "none", border: "none", color: "var(--muted)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Закрыть</button>
     </div>
   );
 }
@@ -341,7 +368,7 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
   const [editing, setEditing] = useState(false);
   const [showPostpone, setShowPostpone] = useState(false);
   const isOverdue = !isArchive && task.deadline && task.deadline < today;
-  const priorityDot: Record<string, string> = { high: "#e53e3e", medium: "#f6ad55", low: "#68d391" };
+  const priorityDot: Record<string, string> = { high: "var(--danger)", medium: "var(--warn)", low: "var(--success)" };
 
   if (editing) {
     return (
@@ -354,8 +381,8 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
   }
 
   const btnStyle = {
-    background: "none", border: "1px solid #e8e8e8", borderRadius: 6, padding: "3px 8px",
-    fontSize: 11, color: "#888", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" as const,
+    background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "3px 8px",
+    fontSize: 11, color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" as const,
   };
 
   return (
@@ -363,37 +390,38 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowPostpone(false); }}
       style={{
-        background: isArchive ? "#fafafa" : "#fff",
-        border: "1px solid #ebebeb", borderRadius: 10, padding: "11px 14px",
+        background: isArchive ? "var(--surface-2)" : "var(--surface)",
+        border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "11px 14px",
         display: "flex", alignItems: "flex-start", gap: 10,
-        boxShadow: hovered ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+        boxShadow: hovered ? "var(--shadow-sm)" : "none",
         opacity: isArchive ? 0.75 : 1,
+        transition: "box-shadow var(--dur) var(--ease-out)",
       }}>
       {/* Checkbox */}
       <button onClick={onDone}
         style={{
           marginTop: 3, width: 16, height: 16, borderRadius: "50%",
-          border: isArchive ? "1.5px solid #68d391" : "1.5px solid #ddd",
-          background: isArchive ? "#68d391" : "none",
+          border: isArchive ? "1.5px solid var(--success)" : "1.5px solid var(--border-strong)",
+          background: isArchive ? "var(--success)" : "none",
           cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
         }}
         title={isArchive ? "Вернуть в работу" : "Отметить выполненной"}>
-        {isArchive && <span style={{ color: "#fff", fontSize: 9, lineHeight: 1 }}>✓</span>}
+        {isArchive && <span style={{ color: "var(--surface)", fontSize: 9, lineHeight: 1 }}>✓</span>}
       </button>
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <span
-            style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", textDecoration: isArchive ? "line-through" : "none", color: isArchive ? "#999" : "#111" }}
+            style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", textDecoration: isArchive ? "line-through" : "none", color: isArchive ? "var(--muted)" : "var(--ink)" }}
             onDoubleClick={() => !isArchive && setEditing(true)}
             title={isArchive ? "" : "Двойной клик для редактирования"}>
             {task.title}
           </span>
-          {!isArchive && <div style={{ width: 6, height: 6, borderRadius: "50%", background: priorityDot[task.priority] || "#ddd", flexShrink: 0, marginTop: 5 }} />}
+          {!isArchive && <div style={{ width: 6, height: 6, borderRadius: "50%", background: priorityDot[task.priority] || "var(--border-strong)", flexShrink: 0, marginTop: 5 }} />}
         </div>
         {task.description && (
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
             {task.description}
           </div>
         )}
@@ -401,17 +429,17 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
           {isArchive ? (
             <>
               {task.created_at && (
-                <span style={{ fontSize: 11, color: "#bbb" }}>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
                   Поставлена: {fmtDate(task.created_at)}
                 </span>
               )}
               {task.done_at && (
-                <span style={{ fontSize: 11, color: "#68d391", fontWeight: 500 }}>
+                <span style={{ fontSize: 11, color: "var(--success-ink)", fontWeight: 500 }}>
                   Выполнена: {fmtDate(task.done_at)}
                 </span>
               )}
               {task.deadline && (
-                <span style={{ fontSize: 11, color: "#bbb" }}>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
                   Срок: {fmtDeadline(task.deadline)}
                 </span>
               )}
@@ -419,11 +447,11 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
           ) : (
             <>
               {task.deadline && (
-                <span style={{ fontSize: 11, color: isOverdue ? "#e53e3e" : "#bbb", fontWeight: isOverdue ? 600 : 400 }}>
+                <span style={{ fontSize: 11, color: isOverdue ? "var(--danger)" : "var(--muted)", fontWeight: isOverdue ? 600 : 400 }}>
                   {isOverdue ? "⚠ " : ""}до {fmtDeadline(task.deadline)}
                 </span>
               )}
-              {task.repeat !== "none" && <span style={{ fontSize: 11, color: "#bbb" }}>↻ повтор</span>}
+              {task.repeat !== "none" && <span style={{ fontSize: 11, color: "var(--muted)" }}>↻ повтор</span>}
             </>
           )}
 
@@ -444,10 +472,10 @@ function TaskRow({ task, today, onDone, onDelete, onUpdate, onDuplicate, isArchi
               )}
               <button style={btnStyle} onClick={onDuplicate} title="Создать копию">⟳ Повторить</button>
               <button
-                style={{ ...btnStyle, color: "#e53e3e", borderColor: "#fdd" }}
+                style={{ ...btnStyle, color: "var(--danger)", borderColor: "var(--danger-border)" }}
                 onClick={onDelete}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#fff5f5"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--danger-soft)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)"; }}>
                 ✕ Удалить
               </button>
             </div>
@@ -481,12 +509,12 @@ function DirectionGroup({ direction, tasks, today, onDone, onDelete, onUpdate, o
       <div
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer", userSelect: "none" }}
         onClick={() => setCollapsed(!collapsed)}>
-        <span style={{ fontSize: 11, color: "#bbb", display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform 0.15s" }}>▼</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#555", letterSpacing: "0.3px", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform var(--dur) var(--ease-out)" }}>▼</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-2)", letterSpacing: "0.3px", textTransform: "uppercase" }}>
           {dirLabel(direction)}
         </span>
-        <span style={{ fontSize: 11, color: "#bbb", background: "#f5f5f5", borderRadius: 10, padding: "1px 7px" }}>{tasks.length}</span>
-        {!isArchive && overdue > 0 && <span style={{ fontSize: 11, color: "#e53e3e", fontWeight: 600 }}>{overdue} просрочено</span>}
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-2)", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", padding: "1px 7px" }}>{tasks.length}</span>
+        {!isArchive && overdue > 0 && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>{overdue} просрочено</span>}
       </div>
 
       {!collapsed && (
@@ -510,9 +538,9 @@ function DirectionGroup({ direction, tasks, today, onDone, onDelete, onUpdate, o
             ) : (
               <button
                 onClick={() => setAddingTask(true)}
-                style={{ background: "none", border: "1px dashed #e0e0e0", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#bbb", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#bbb"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLButtonElement).style.color = "#bbb"; }}>
+                style={{ background: "none", border: "1px dashed var(--border-strong)", borderRadius: "var(--r-sm)", padding: "8px 14px", fontSize: 12, color: "var(--muted)", cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--brand)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--brand-ink)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
                 + Добавить задачу
               </button>
             )
@@ -545,8 +573,8 @@ function ArchivePanel({ today, onRestore, onDelete, onDuplicate }: ArchivePanelP
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div style={{ padding: "24px 0", textAlign: "center", color: "#bbb", fontSize: 13 }}>Загрузка архива…</div>;
-  if (doneTasks.length === 0) return <div style={{ padding: "32px 0", textAlign: "center", color: "#bbb", fontSize: 13 }}>Выполненных задач пока нет</div>;
+  if (loading) return <div style={{ padding: "24px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загрузка архива…</div>;
+  if (doneTasks.length === 0) return <div style={{ padding: "32px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Выполненных задач пока нет</div>;
 
   // Group by direction, within each direction sort by done_at desc
   const grouped: Record<string, Task[]> = {};
@@ -562,7 +590,7 @@ function ArchivePanel({ today, onRestore, onDelete, onDuplicate }: ArchivePanelP
 
   return (
     <div>
-      <div style={{ fontSize: 12, color: "#bbb", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
         {doneTasks.length} выполненных задач · в каждой задаче показана дата постановки и завершения
       </div>
       {dirs.map(dir => (
@@ -598,11 +626,11 @@ function ArchiveDirectionGroup({ direction, tasks, today, onRestore, onDelete, o
       <div
         onClick={() => setCollapsed(!collapsed)}
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", cursor: "pointer", userSelect: "none" }}>
-        <span style={{ fontSize: 11, color: "#bbb", display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform 0.15s" }}>▼</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#555", letterSpacing: "0.3px", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-block", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform var(--dur) var(--ease-out)" }}>▼</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-2)", letterSpacing: "0.3px", textTransform: "uppercase" }}>
           {dirLabel(direction)}
         </span>
-        <span style={{ fontSize: 11, color: "#bbb", background: "#f5f5f5", borderRadius: 10, padding: "1px 7px" }}>{tasks.length}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-2)", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", padding: "1px 7px" }}>{tasks.length}</span>
       </div>
       {!collapsed && (
         <div style={{ display: "flex", flexDirection: "column", gap: 5, paddingLeft: 4 }}>
@@ -652,7 +680,7 @@ function CalendarChip({ task, onDone, onUpdate, onDelete, dragging, onDragStart 
       <>
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 500 }}
           onClick={() => setEditing(false)} />
-        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 501, width: 360, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.15)", padding: 16 }}
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 501, width: 360, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-lg)", padding: 16 }}
           onClick={e => e.stopPropagation()}>
           <TaskEditForm
             initial={task}
@@ -674,18 +702,18 @@ function CalendarChip({ task, onDone, onUpdate, onDelete, dragging, onDragStart 
         opacity: dragging ? 0.4 : 1, transition: "opacity 0.15s",
         marginBottom: 2,
       }}>
-      <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+      <div style={{ fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
         {task.title}
       </div>
-      {task.scheduled_time && <div style={{ fontSize: 10, color: "#888" }}>{task.scheduled_time}</div>}
+      {task.scheduled_time && <div style={{ fontSize: 10, color: "var(--muted)" }}>{task.scheduled_time}</div>}
       {hov && (
         <div style={{ position: "absolute", right: 4, top: 2, display: "flex", gap: 3 }}>
           <button onClick={e => { e.stopPropagation(); setEditing(true); }}
-            style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "#555" }}>✏</button>
+            style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "var(--ink-2)" }}>✏</button>
           <button onClick={e => { e.stopPropagation(); onDone(); }}
-            style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "#68d391" }}>✓</button>
+            style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "var(--success)" }}>✓</button>
           <button onClick={e => { e.stopPropagation(); onDelete(); }}
-            style={{ background: "#fff", border: "1px solid #fdd", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "#e53e3e" }}>✕</button>
+            style={{ background: "var(--surface)", border: "1px solid var(--danger-border)", borderRadius: 4, padding: "1px 4px", fontSize: 10, cursor: "pointer", color: "var(--danger)" }}>✕</button>
         </div>
       )}
     </div>
@@ -775,13 +803,13 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
       {/* Navigation */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <button onClick={() => setWeekOffset(w => w - 1)}
-          style={{ background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "#555" }}>‹</button>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#333", minWidth: 220, textAlign: "center" }}>{weekLabel}</span>
+          style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "5px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-2)" }}>‹</button>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", minWidth: 220, textAlign: "center" }}>{weekLabel}</span>
         <button onClick={() => setWeekOffset(w => w + 1)}
-          style={{ background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "#555" }}>›</button>
+          style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "5px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--ink-2)" }}>›</button>
         {weekOffset !== 0 && (
           <button onClick={() => setWeekOffset(0)}
-            style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ fontSize: 12, color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}>
             Сегодня
           </button>
         )}
@@ -789,10 +817,10 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
 
       {/* Просроченные */}
       {overdue.length > 0 && (
-        <div style={{ background: "#fff5f5", border: "1px solid #fdd", borderRadius: 10, padding: "8px 14px", marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#c53030", marginRight: 4 }}>⚠ Просроченные</span>
+        <div style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", padding: "8px 14px", marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--danger-ink)", marginRight: 4 }}>⚠ Просроченные</span>
           {overdue.map(t => (
-            <span key={t.id} style={{ fontSize: 11, background: "#fed7d7", color: "#c53030", borderRadius: 6, padding: "2px 8px", cursor: "pointer" }}
+            <span key={t.id} style={{ fontSize: 11, background: "var(--danger-border)", color: "var(--danger-ink)", borderRadius: "var(--r-xs)", padding: "2px 8px", cursor: "pointer" }}
               onClick={() => onUpdate(t.id, { deadline: today })}>
               {t.title}
             </span>
@@ -801,29 +829,29 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
       )}
 
       {/* Calendar grid — 7 columns fill available width */}
-      <div style={{ border: "1px solid #ebebeb", borderRadius: 12, background: "#fff" }}>
+      <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-md)", background: "var(--surface)", overflow: "hidden" }}>
         <div>
 
           {/* Day headers */}
-          <div style={{ display: "flex", borderBottom: "1px solid #ebebeb" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
             <div style={{ width: TIME_W, flexShrink: 0 }} />
             {weekDays.map(day => {
               const ymd = toYMD(day);
               const isToday = ymd === today;
               return (
-                <div key={ymd} style={{ flex: 1, minWidth: 0, padding: "10px 8px", borderLeft: "1px solid #f0f0f0", textAlign: "center", background: isToday ? "#111" : "#fff" }}>
-                  <div style={{ fontSize: 11, color: isToday ? "rgba(255,255,255,0.6)" : "#bbb", fontWeight: 500 }}>{DAY_SHORT[day.getDay()]}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: isToday ? "#fff" : "#111", marginTop: 1 }}>{day.getDate()}</div>
-                  <div style={{ fontSize: 10, color: isToday ? "rgba(255,255,255,0.5)" : "#ccc" }}>{day.toLocaleDateString("ru-RU", { month: "short" })}</div>
+                <div key={ymd} style={{ flex: 1, minWidth: 0, padding: "10px 8px", borderLeft: "1px solid var(--border)", textAlign: "center", background: isToday ? "var(--brand)" : "var(--surface)" }}>
+                  <div style={{ fontSize: 11, color: isToday ? "rgba(255,255,255,0.72)" : "var(--muted)", fontWeight: 500 }}>{DAY_SHORT[day.getDay()]}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: isToday ? "var(--surface)" : "var(--ink)", marginTop: 1 }}>{day.getDate()}</div>
+                  <div style={{ fontSize: 10, color: isToday ? "rgba(255,255,255,0.6)" : "var(--faint)" }}>{day.toLocaleDateString("ru-RU", { month: "short" })}</div>
                 </div>
               );
             })}
           </div>
 
           {/* All-day row — tasks without scheduled_time */}
-          <div style={{ display: "flex", borderBottom: "1px solid #ebebeb", minHeight: 36 }}>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", minHeight: 36 }}>
             <div style={{ width: TIME_W, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 6 }}>
-              <span style={{ fontSize: 9, color: "#ccc", textTransform: "uppercase", letterSpacing: "0.5px" }}>весь<br/>день</span>
+              <span style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>весь<br/>день</span>
             </div>
             {weekDays.map(day => {
               const ymd = toYMD(day);
@@ -834,7 +862,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                   onDragOver={e => { e.preventDefault(); setDropTarget({ date: ymd, hour: null }); }}
                   onDragLeave={() => setDropTarget(null)}
                   onDrop={() => handleDrop(ymd, null)}
-                  style={{ flex: 1, minWidth: 0, borderLeft: "1px solid #f0f0f0", padding: "4px 4px", background: isDropTarget ? "#f0f7ff" : "transparent", minHeight: 36 }}>
+                  style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--border)", padding: "4px 4px", background: isDropTarget ? "var(--brand-soft)" : "transparent", minHeight: 36 }}>
                   {allDay.map(t => (
                     <CalendarChip key={t.id} task={t}
                       onDone={() => onDone(t.id)}
@@ -844,7 +872,7 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                       onDragStart={() => setDraggingId(t.id)} />
                   ))}
                   {appleEvents.filter(e => e.date === ymd && e.allday).map((e, i) => (
-                    <div key={`ac-ad-${i}`} style={{ background: e.calendar === "personal" ? "#fef3c7" : "#e0e7ff", borderLeft: `3px solid ${e.calendar === "personal" ? "#f59e0b" : "#6366f1"}`, borderRadius: "0 5px 5px 0", padding: "2px 6px", fontSize: 11, marginBottom: 2 }} title={e.cal_name}>
+                    <div key={`ac-ad-${i}`} style={{ background: e.calendar === "personal" ? "var(--warn-soft)" : "var(--info-soft)", borderLeft: `3px solid ${e.calendar === "personal" ? "var(--warn)" : "var(--info)"}`, borderRadius: "0 5px 5px 0", padding: "2px 6px", fontSize: 11, marginBottom: 2 }} title={e.cal_name}>
                       <span style={{ marginRight: 3 }}>🍎</span>{e.title}
                     </div>
                   ))}
@@ -855,10 +883,10 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
 
           {/* Time grid */}
           {HOURS.map(hour => (
-            <div key={hour} style={{ display: "flex", height: SLOT_H, borderBottom: "1px solid #f5f5f5" }}>
+            <div key={hour} style={{ display: "flex", height: SLOT_H, borderBottom: "1px solid var(--border)" }}>
               {/* Time label */}
               <div style={{ width: TIME_W, flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "flex-end", paddingRight: 6, paddingTop: 3 }}>
-                <span style={{ fontSize: 10, color: "#ccc" }}>{hour}:00</span>
+                <span style={{ fontSize: 10, color: "var(--muted)" }}>{hour}:00</span>
               </div>
               {/* Day slots */}
               {weekDays.map(day => {
@@ -873,9 +901,9 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                     onDrop={() => handleDrop(ymd, hour)}
                     onClick={() => setAddingInSlot({ date: ymd, hour })}
                     style={{
-                      flex: 1, minWidth: 0, borderLeft: "1px solid #f0f0f0",
+                      flex: 1, minWidth: 0, borderLeft: "1px solid var(--border)",
                       padding: "2px 4px", position: "relative", cursor: "pointer",
-                      background: isDropTarget ? "#e8f4fd" : isToday ? "#fafeff" : "transparent",
+                      background: isDropTarget ? "var(--brand-soft)" : isToday ? "rgba(26,107,82,0.04)" : "transparent",
                     }}>
                     {slotTasks.map(t => (
                       <CalendarChip key={t.id} task={t}
@@ -887,15 +915,15 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
                     ))}
                     {appleEvents.filter(e => e.date === ymd && !e.allday && e.start_time && parseInt(e.start_time.split(":")[0]) === hour).map((e, i) => (
                       <div key={`ac-${i}`} title={`${e.cal_name}: ${e.start_time}–${e.end_time}`}
-                        style={{ background: e.calendar === "personal" ? "#fef9c3" : "#ede9fe", borderLeft: `3px solid ${e.calendar === "personal" ? "#f59e0b" : "#6366f1"}`, borderRadius: "0 5px 5px 0", padding: "2px 6px", fontSize: 11, marginBottom: 2, userSelect: "none" }}>
-                        <div style={{ fontWeight: 600, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+                        style={{ background: e.calendar === "personal" ? "var(--warn-soft)" : "var(--info-soft)", borderLeft: `3px solid ${e.calendar === "personal" ? "var(--warn)" : "var(--info)"}`, borderRadius: "0 5px 5px 0", padding: "2px 6px", fontSize: 11, marginBottom: 2, userSelect: "none" }}>
+                        <div style={{ fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
                           <span style={{ marginRight: 3 }}>🍎</span>{e.title}
                         </div>
-                        <div style={{ fontSize: 10, color: "#888" }}>{e.start_time}–{e.end_time}</div>
+                        <div style={{ fontSize: 10, color: "var(--muted)" }}>{e.start_time}–{e.end_time}</div>
                       </div>
                     ))}
                     {addingInSlot?.date === ymd && addingInSlot?.hour === hour && (
-                      <div style={{ position: "absolute", top: 0, left: 0, zIndex: 50, width: COL_W * 2, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", padding: 8 }}
+                      <div style={{ position: "absolute", top: 0, left: 0, zIndex: 50, width: COL_W * 2, background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-sm)", boxShadow: "var(--shadow-md)", padding: 8 }}
                         onClick={e => e.stopPropagation()}>
                         <TaskEditForm
                           initial={{ deadline: ymd, scheduled_time: `${String(hour).padStart(2, "0")}:00` }}
@@ -929,17 +957,17 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
               }
               setDraggingId(null); setDropTarget(null);
             }}
-            style={{ marginTop: 12, border: `1px solid ${isDropZone ? "#3182ce" : "#ebebeb"}`, borderRadius: 12, overflow: "hidden", transition: "border-color 0.15s", background: isDropZone ? "#f0f7ff" : "transparent" }}>
-            <div style={{ padding: "10px 16px", background: isDropZone ? "#e8f4fd" : "#fafafa", borderBottom: "1px solid #ebebeb", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: isDropZone ? "#2563eb" : "#555" }}>Входящие</span>
-              <span style={{ fontSize: 11, color: "#bbb", background: "#f0f0f0", borderRadius: 10, padding: "1px 7px" }}>{unscheduled.length}</span>
-              <span style={{ fontSize: 11, color: isDropZone ? "#3182ce" : "#bbb" }}>
+            style={{ marginTop: 12, border: `1px solid ${isDropZone ? "var(--brand)" : "var(--border)"}`, borderRadius: "var(--r-md)", overflow: "hidden", transition: "border-color var(--dur) var(--ease-out)", background: isDropZone ? "var(--brand-soft)" : "transparent" }}>
+            <div style={{ padding: "10px 16px", background: isDropZone ? "var(--brand-soft)" : "var(--surface-2)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: isDropZone ? "var(--brand-ink)" : "var(--ink-2)" }}>Входящие</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", padding: "1px 7px" }}>{unscheduled.length}</span>
+              <span style={{ fontSize: 11, color: isDropZone ? "var(--brand)" : "var(--muted)" }}>
                 {isDropZone ? "↓ отпустите, чтобы убрать дату" : "— перетащите задачу в нужный день и время"}
               </span>
             </div>
             <div style={{ padding: "10px 12px" }}>
               {unscheduled.length === 0 && !isDropZone && (
-                <div style={{ fontSize: 12, color: "#ccc", padding: "4px 2px" }}>Нет неразобранных задач</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", padding: "4px 2px" }}>Нет неразобранных задач</div>
               )}
               {dirOrder().filter(dir => unscheduled.some(t => t.direction === dir)).map(dir => (
                 <div key={dir} style={{ marginBottom: 8 }}>
@@ -975,23 +1003,23 @@ function WeeklyView({ tasks, today, onDone, onDelete, onUpdate, onDuplicate, onA
 function DealRow({ d, last }: { d: RiskDeal; last: boolean }) {
   const critical = d.age_days >= 180;
   const warn = d.age_days >= 60;
-  const dotColor = critical ? "#e53e3e" : warn ? "#f6ad55" : "#68d391";
-  const ageColor = critical ? "#e53e3e" : warn ? "#f6ad55" : "#bbb";
+  const dotColor = critical ? "var(--danger)" : warn ? "var(--warn)" : "var(--success)";
+  const ageColor = critical ? "var(--danger)" : warn ? "var(--warn)" : "var(--muted)";
   return (
     <a href={d.url} target="_blank" rel="noreferrer"
-      style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", alignItems: "center", gap: 16, padding: "11px 20px", borderBottom: last ? "none" : "1px solid #f0f0f0", textDecoration: "none", color: "inherit", transition: "background 0.1s" }}
-      onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+      style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", alignItems: "center", gap: 16, padding: "11px 20px", borderBottom: last ? "none" : "1px solid var(--border)", textDecoration: "none", color: "inherit", transition: "background var(--dur) var(--ease-out)" }}
+      onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
       <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, justifySelf: "center" }} />
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{d.client}</div>
-      <div style={{ fontSize: 13, color: "#777" }}>{d.broker || "—"}</div>
-      <div style={{ fontSize: 13, fontWeight: 500, color: "#111", textAlign: "right" }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{d.client}</div>
+      <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{d.broker || "—"}</div>
+      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", textAlign: "right" }}>
         {d.commission > 0 ? `${d.commission.toLocaleString("ru-RU")} ₽` : "—"}
       </div>
       <div style={{ fontSize: 12, color: ageColor, fontWeight: 600, textAlign: "right" }}>
         {d.age_days} дн.
       </div>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ justifySelf: "center" }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ justifySelf: "center", color: "var(--faint)" }}>
         <path d="M7 17L17 7M17 7H7M17 7v10" />
       </svg>
     </a>
@@ -1000,39 +1028,39 @@ function DealRow({ d, last }: { d: RiskDeal; last: boolean }) {
 
 const STAGE_ORDER = ["Дожим", "Бронь", "Показ проведён", "Показ назначен", "Открыта сделка"];
 const STAGE_COLOR: Record<string, string> = {
-  "Дожим": "#e53e3e",
+  "Дожим": "var(--danger)",
   "Бронь": "#9f7aea",
   "Показ проведён": "#3182ce",
   "Показ назначен": "#38a169",
-  "Открыта сделка": "#f6ad55",
+  "Открыта сделка": "var(--warn)",
 };
 
 function DealStageGroup({ stage, deals }: { stage: string; deals: RiskDeal[] }) {
   const [collapsed, setCollapsed] = useState(false);
   const totalCommission = deals.reduce((s, d) => s + (d.commission || 0), 0);
-  const color = STAGE_COLOR[stage] || "#888";
+  const color = STAGE_COLOR[stage] || "var(--muted)";
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginBottom: 8 }}>
       <div
         onClick={() => setCollapsed(!collapsed)}
-        style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", borderBottom: collapsed ? "none" : "1px solid #f0f0f0", background: "#fafafa" }}>
+        style={{ padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", borderBottom: collapsed ? "none" : "1px solid var(--border)", background: "var(--surface-2)" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0, display: "inline-block" }} />
-        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{stage}</span>
-        <span style={{ fontSize: 11, color: "#bbb", background: "#efefef", borderRadius: 10, padding: "2px 8px" }}>{deals.length}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: "var(--ink)" }}>{stage}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", padding: "2px 8px" }}>{deals.length}</span>
         {totalCommission > 0 && (
-          <span style={{ fontSize: 12, color: "#999", fontWeight: 500 }}>{fmt(totalCommission)} ₽</span>
+          <span style={{ fontSize: 12, color: "var(--ink-2)", fontWeight: 500 }}>{fmt(totalCommission)} ₽</span>
         )}
-        <span style={{ fontSize: 11, color: "#bbb", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
+        <span style={{ fontSize: 11, color: "var(--muted)", transform: collapsed ? "rotate(-90deg)" : "rotate(0)", transition: "transform var(--dur) var(--ease-out)", display: "inline-block" }}>▼</span>
       </div>
       {!collapsed && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", gap: 16, padding: "7px 20px", borderBottom: "1px solid #f5f5f5" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "8px 1fr 1fr 120px 70px 16px", gap: 16, padding: "7px 20px", borderBottom: "1px solid var(--border)" }}>
             <div />
-            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px" }}>Клиент</div>
-            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px" }}>Брокер</div>
-            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Комиссия</div>
-            <div style={{ fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Без движ.</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px" }}>Клиент</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px" }}>Брокер</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Комиссия</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "right" }}>Без движ.</div>
             <div />
           </div>
           {deals.map((d, i) => <DealRow key={d.url} d={d} last={i === deals.length - 1} />)}
@@ -1079,8 +1107,8 @@ function SalesDashboard() {
       .catch(() => {});
   }, [view, rnpMonth]);
 
-  if (loading) return <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загрузка данных продаж…</div>;
-  if (error || !data) return <div style={{ padding: 40, textAlign: "center", color: "#e53e3e", fontSize: 13 }}>{error}</div>;
+  if (loading) return <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загрузка данных продаж…</div>;
+  if (error || !data) return <div style={{ padding: 40, textAlign: "center", color: "var(--danger)", fontSize: 13 }}>{error}</div>;
 
   const maxFunnelVal = data.funnel[0]?.value || 1;
 
@@ -1089,15 +1117,16 @@ function SalesDashboard() {
       {/* Шапка */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#111" }}>РНП · Отдел продаж</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Период: {data.period} · Google Sheets</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>РНП · Отдел продаж</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Период: {data.period} · Google Sheets</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {(["funnel", "brokers", "rnp"] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
-              fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-              background: view === v ? "#111" : "none", color: view === v ? "#fff" : "#999",
-              border: view === v ? "none" : "1px solid #e0e0e0",
+              fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: "var(--r-sm)", cursor: "pointer", fontFamily: "inherit",
+              background: view === v ? "var(--ink)" : "var(--surface)", color: view === v ? "var(--surface)" : "var(--ink-2)",
+              border: view === v ? "1px solid var(--ink)" : "1px solid var(--border-strong)",
+              transition: "background var(--dur) var(--ease-out)",
             }}>{v === "funnel" ? "Воронка" : v === "brokers" ? "Рейтинг брокеров" : "РНП"}</button>
           ))}
         </div>
@@ -1111,41 +1140,42 @@ function SalesDashboard() {
           { label: "Сделок", value: Math.round(data.funnel.find(f => f.stage === "Сделки")?.value || 0).toString(), sub: "закрыто за период" },
           { label: "Узкое место", value: data.bottleneck, sub: "мин. конверсия", accent: true },
         ].map((m, i) => (
-          <div key={i} style={{ background: m.accent ? "#fffbeb" : "#fff", border: `1px solid ${m.accent ? "#fde68a" : "#ebebeb"}`, borderRadius: 10, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
-            <div style={{ fontSize: m.accent ? 16 : 22, fontWeight: 700, color: m.accent ? "#b45309" : "#111", letterSpacing: "-0.5px" }}>{m.value}</div>
-            <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{m.sub}</div>
+          <div key={i} style={{ background: m.accent ? "var(--warn-soft)" : "var(--surface)", border: `1px solid ${m.accent ? "var(--warn-border)" : "var(--border)"}`, borderRadius: "var(--r-sm)", padding: "16px 20px", boxShadow: "var(--shadow-xs)" }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4, fontWeight: 600 }}>{m.label}</div>
+            <div style={{ fontSize: m.accent ? 16 : 22, fontWeight: 700, color: m.accent ? "var(--warn-ink)" : "var(--ink)", letterSpacing: "-0.02em" }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{m.sub}</div>
           </div>
         ))}
       </div>
 
       {/* Воронка */}
       {view === "funnel" && (
-        <div style={{ background: "#f0ebe4", border: "1px solid #ddd5c8", borderRadius: 12, padding: "24px 28px" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: "#3b1f10" }}>Воронка продаж</div>
-          <div style={{ fontSize: 12, color: "#9c8474", marginBottom: 24 }}>Подсвечено узкое место — этап с худшей конверсией</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "24px 28px" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: "var(--ink)" }}>Воронка продаж</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 24 }}>Подсвечено узкое место — этап с худшей конверсией</div>
           {data.funnel.map((stage, i) => {
             const barW = Math.max((stage.value / maxFunnelVal) * 100, 2);
             const isBottleneck = stage.stage === data.bottleneck;
             return (
               <div key={i} style={{ marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-                  <div style={{ width: 140, fontSize: 13, color: "#6b5040", flexShrink: 0, textAlign: "right" }}>{stage.stage}</div>
-                  <div style={{ flex: 1, position: "relative", height: 32, background: "#ddd5c8", borderRadius: 6, overflow: "hidden" }}>
+                  <div style={{ width: 140, fontSize: 13, color: "var(--ink-2)", flexShrink: 0, textAlign: "right" }}>{stage.stage}</div>
+                  <div style={{ flex: 1, position: "relative", height: 32, background: "var(--surface-2)", borderRadius: "var(--r-xs)", overflow: "hidden" }}>
                     <div style={{
                       position: "absolute", left: 0, top: 0, bottom: 0,
                       width: `${barW}%`,
-                      background: isBottleneck ? "#c9883a" : "#5c2d1a",
-                      borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 10,
+                      background: isBottleneck ? "var(--warn)" : "var(--brand)",
+                      borderRadius: "var(--r-xs)", display: "flex", alignItems: "center", paddingLeft: 10,
+                      transition: "width 0.4s var(--ease-out)",
                     }}>
-                      <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{Math.round(stage.value)}</span>
+                      <span style={{ color: "var(--surface)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>{Math.round(stage.value)}</span>
                     </div>
                     {isBottleneck && (
-                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 700, background: "#c9883a", color: "#fff3e6", borderRadius: 4, padding: "2px 7px" }}>УЗКОЕ МЕСТО</span>
+                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, fontWeight: 700, background: "var(--warn)", color: "var(--surface)", borderRadius: 4, padding: "2px 7px" }}>УЗКОЕ МЕСТО</span>
                     )}
                   </div>
                   {stage.conv !== null && (
-                    <div style={{ width: 60, fontSize: 12, color: isBottleneck ? "#a0522d" : "#b09a89", fontWeight: isBottleneck ? 600 : 400, flexShrink: 0 }}>↓ {stage.conv}%</div>
+                    <div style={{ width: 60, fontSize: 12, color: isBottleneck ? "var(--warn-ink)" : "var(--muted)", fontWeight: isBottleneck ? 600 : 400, flexShrink: 0 }}>↓ {stage.conv}%</div>
                   )}
                 </div>
               </div>
@@ -1156,33 +1186,33 @@ function SalesDashboard() {
 
       {/* Рейтинг брокеров */}
       {view === "brokers" && (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#fafafa" }}>
+            <thead style={{ background: "var(--surface-2)" }}>
               <tr>
                 {["#", "Брокер", "Лиды", "Квалы", "Показы", "Встречи", "Задатки", "Сделки", "Вал", "Ср. чек"].map(h => (
-                  <th key={h} style={{ padding: "10px 12px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: h === "#" || h === "Брокер" ? "left" : "right", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: h === "#" || h === "Брокер" ? "left" : "right", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {data.brokers.map((b, i) => {
                 const isTop3 = b.rank <= 3;
-                const rankColor = b.rank === 1 ? "#f59e0b" : b.rank === 2 ? "#9ca3af" : b.rank === 3 ? "#c2714f" : "#bbb";
+                const rankColor = b.rank === 1 ? "#e0a416" : b.rank === 2 ? "#9ca3af" : b.rank === 3 ? "#c2714f" : "var(--faint)";
                 return (
                   <tr key={i}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: isTop3 ? rankColor : "transparent", color: isTop3 ? "#fff" : "#bbb", fontSize: 12, fontWeight: 700 }}>{b.rank}</span>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: isTop3 ? rankColor : "transparent", color: isTop3 ? "var(--surface)" : "var(--muted)", fontSize: 12, fontWeight: 700 }}>{b.rank}</span>
                     </td>
-                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", fontWeight: 500, fontSize: 13 }}>{b.name}</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)", fontWeight: 500, fontSize: 13, color: "var(--ink)" }}>{b.name}</td>
                     {[b.leads, b.quals, b.shows, b.meetings, Math.round(b.deposits)].map((v, j) => (
-                      <td key={j} style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, color: "#555" }}>{v}</td>
+                      <td key={j} style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", fontSize: 13, color: "var(--ink-2)" }}>{v}</td>
                     ))}
-                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, color: "#555" }}>{Math.round(b.deals)}</td>
-                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 13, fontWeight: b.rank <= 3 ? 600 : 400, color: b.rank === 1 ? "#f59e0b" : "#111" }}>{fmt(b.commission)} ₽</td>
-                    <td style={{ padding: "12px 12px", borderBottom: "1px solid #f5f5f5", textAlign: "right", fontSize: 12, color: "#999" }}>{fmt(b.avg_check)} ₽</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", fontSize: 13, color: "var(--ink-2)" }}>{Math.round(b.deals)}</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", fontSize: 13, fontWeight: b.rank <= 3 ? 600 : 400, color: b.rank === 1 ? "var(--warn-ink)" : "var(--ink)" }}>{fmt(b.commission)} ₽</td>
+                    <td style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", fontSize: 12, color: "var(--muted)" }}>{fmt(b.avg_check)} ₽</td>
                   </tr>
                 );
               })}
@@ -1198,43 +1228,44 @@ function SalesDashboard() {
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
             {monthsThrough(0).map(m => (
               <button key={m} onClick={() => setRnpMonth(m)} style={{
-                padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-                background: rnpMonth === m ? "#5b4ff5" : "#fff",
-                color: rnpMonth === m ? "#fff" : "#555",
-                border: `1px solid ${rnpMonth === m ? "#5b4ff5" : "#e0e0e0"}`,
+                padding: "5px 14px", borderRadius: "var(--r-pill)", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                background: rnpMonth === m ? "var(--brand)" : "var(--surface)",
+                color: rnpMonth === m ? "var(--surface)" : "var(--ink-2)",
+                border: `1px solid ${rnpMonth === m ? "var(--brand)" : "var(--border-strong)"}`,
                 fontWeight: rnpMonth === m ? 600 : 400,
+                transition: "background var(--dur) var(--ease-out)",
               }}>{m}</button>
             ))}
           </div>
 
           {!rnpData ? (
-            <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Загрузка РНП…</div>
+            <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Загрузка РНП…</div>
           ) : rnpData.empty ? (
-            <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {rnpData.month} — вкладка ещё не заведена в таблице</div>
+            <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Нет данных за {rnpData.month} — вкладка ещё не заведена в таблице</div>
           ) : (
             <>
               {/* Воронка план/факт */}
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 20 }}>Воронка — план vs факт · {rnpData.month}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "24px 28px", marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 20, color: "var(--ink)" }}>Воронка — план vs факт · {rnpData.month}</div>
                 {rnpData.funnel.map((f: any, i: number) => {
                   const isVal = f.metric.includes("₽");
                   const planVal = f.plan;
                   const factVal = f.fact;
                   const pct = f.pct;
                   const barFact = planVal > 0 ? Math.min((factVal / planVal) * 100, 100) : 0;
-                  const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#e53e3e";
+                  const color = pct >= 80 ? "var(--success)" : pct >= 50 ? "var(--warn)" : "var(--danger)";
                   return (
                     <div key={i} style={{ marginBottom: 18 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-                        <span style={{ fontWeight: 500, color: "#333" }}>{f.metric}</span>
-                        <span style={{ color: "#999" }}>
-                          факт: <b style={{ color: "#111" }}>{isVal ? `${fmt(factVal)} ₽` : Math.round(factVal)}</b>
+                        <span style={{ fontWeight: 500, color: "var(--ink-2)" }}>{f.metric}</span>
+                        <span style={{ color: "var(--muted)" }}>
+                          факт: <b style={{ color: "var(--ink)" }}>{isVal ? `${fmt(factVal)} ₽` : Math.round(factVal)}</b>
                           {" / "}план: {isVal ? `${fmt(planVal)} ₽` : Math.round(planVal)}
                           <span style={{ marginLeft: 10, fontWeight: 700, color }}>{pct}%</span>
                         </span>
                       </div>
-                      <div style={{ height: 10, background: "#f0f0f0", borderRadius: 5, overflow: "hidden", position: "relative" }}>
-                        <div style={{ height: "100%", width: `${barFact}%`, background: color, borderRadius: 5, transition: "width 0.4s" }} />
+                      <div style={{ height: 10, background: "var(--surface-2)", borderRadius: "var(--r-pill)", overflow: "hidden", position: "relative" }}>
+                        <div style={{ height: "100%", width: `${barFact}%`, background: color, borderRadius: "var(--r-pill)", transition: "width 0.4s var(--ease-out)" }} />
                       </div>
                     </div>
                   );
@@ -1242,13 +1273,13 @@ function SalesDashboard() {
               </div>
 
               {/* Рейтинг РНП брокеров */}
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ padding: "16px 20px", fontSize: 14, fontWeight: 600, borderBottom: "1px solid #ebebeb" }}>Брокеры · {rnpData.month}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", fontSize: 14, fontWeight: 600, borderBottom: "1px solid var(--border)", color: "var(--ink)" }}>Брокеры · {rnpData.month}</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#fafafa" }}>
+                    <tr style={{ background: "var(--surface-2)" }}>
                       {["Брокер", "Сделки факт", "Вал факт", "КВАЛы 12+", "Показы", "Встречи", "Задатки"].map(h => (
-                        <th key={h} style={{ padding: "9px 14px", fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid #ebebeb" }}>{h}</th>
+                        <th key={h} style={{ padding: "9px 14px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid var(--border)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1256,13 +1287,13 @@ function SalesDashboard() {
                     {rnpData.brokers.map((b: any, i: number) => {
                       const m = (name: string) => b.metrics?.find((x: any) => x.metric === name);
                       return (
-                        <tr key={i} onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                          <td style={{ padding: "10px 14px", fontWeight: 500, borderBottom: "1px solid #f5f5f5" }}>{b.name}</td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f5f5f5", color: b.deals_fact > 0 ? "#22c55e" : "#bbb", fontWeight: 600 }}>{b.deals_fact || "—"}</td>
-                          <td style={{ padding: "10px 14px", borderBottom: "1px solid #f5f5f5", fontWeight: b.val_fact > 0 ? 600 : 400, color: b.val_fact > 0 ? "#111" : "#bbb" }}>{b.val_fact > 0 ? `${fmt(b.val_fact)} ₽` : "—"}</td>
+                        <tr key={i} onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                          <td style={{ padding: "10px 14px", fontWeight: 500, borderBottom: "1px solid var(--border)", color: "var(--ink)" }}>{b.name}</td>
+                          <td style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", color: b.deals_fact > 0 ? "var(--success-ink)" : "var(--muted)", fontWeight: 600 }}>{b.deals_fact || "—"}</td>
+                          <td style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: b.val_fact > 0 ? 600 : 400, color: b.val_fact > 0 ? "var(--ink)" : "var(--muted)" }}>{b.val_fact > 0 ? `${fmt(b.val_fact)} ₽` : "—"}</td>
                           {["КВАЛы 12+","Показы","Встречи","Задатки"].map(name => {
                             const met = m(name);
-                            return <td key={name} style={{ padding: "10px 14px", borderBottom: "1px solid #f5f5f5", color: "#666" }}>{met ? `${met.fact} / ${Math.round(met.plan)}` : "—"}</td>;
+                            return <td key={name} style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", color: "var(--ink-2)" }}>{met ? `${met.fact} / ${Math.round(met.plan)}` : "—"}</td>;
                           })}
                         </tr>
                       );
@@ -1280,8 +1311,8 @@ function SalesDashboard() {
 
 // ── Sales Table (Отдел продаж — Битрикс) ───────────────────────────────────
 function SalesTable({ deals, loading, error, onRefresh }: { deals: RiskDeal[]; loading: boolean; error: string | null; onRefresh: () => void }) {
-  const thStyle: React.CSSProperties = { padding: "10px 14px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap" };
-  const tdStyle: React.CSSProperties = { padding: "12px 14px", fontSize: 13, borderBottom: "1px solid #f5f5f5", verticalAlign: "middle" };
+  const thStyle: React.CSSProperties = { padding: "10px 14px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
+  const tdStyle: React.CSSProperties = { padding: "12px 14px", fontSize: 13, borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
 
   const riskMoney = deals.reduce((s, d) => s + (d.commission || 0), 0);
 
@@ -1290,42 +1321,42 @@ function SalesTable({ deals, loading, error, onRefresh }: { deals: RiskDeal[]; l
       {/* Шапка */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#111" }}>Отдел продаж</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Первичный источник: Битрикс24 · только чтение</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>Отдел продаж</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Первичный источник: Битрикс24 · только чтение</div>
         </div>
-        <button onClick={onRefresh} style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit" }}>↻ Обновить</button>
+        <button onClick={onRefresh} style={{ fontSize: 12, color: "var(--muted)", background: "none", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit" }}>↻ Обновить</button>
       </div>
 
       {/* Метрики */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "16px 20px" }}>
-          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Зависших сделок</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: deals.length > 0 ? "#e53e3e" : "#111" }}>{loading ? "—" : deals.length}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Зависших сделок</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: deals.length > 0 ? "var(--danger)" : "var(--ink)" }}>{loading ? "—" : deals.length}</div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "16px 20px" }}>
-          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Под риском</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: riskMoney > 0 ? "#e53e3e" : "#111" }}>{loading ? "—" : riskMoney > 0 ? `${fmt(riskMoney)} ₽` : "—"}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Под риском</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: riskMoney > 0 ? "var(--danger)" : "var(--ink)" }}>{loading ? "—" : riskMoney > 0 ? `${fmt(riskMoney)} ₽` : "—"}</div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "16px 20px" }}>
-          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Уволенных брокеров</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Уволенных брокеров</div>
           <div style={{ fontSize: 26, fontWeight: 700 }}>{loading ? "—" : deals.filter(d => d.is_fired).length}</div>
         </div>
       </div>
 
       {/* Таблица */}
       {loading ? (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 40, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загрузка из Битрикс24…</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загрузка из Битрикс24…</div>
       ) : error ? (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 32, textAlign: "center" }}>
-          <div style={{ color: "#e53e3e", fontSize: 13, marginBottom: 10 }}>{error}</div>
-          <button onClick={onRefresh} style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>Попробовать снова</button>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 10 }}>{error}</div>
+          <button onClick={onRefresh} style={{ fontSize: 12, color: "var(--muted)", background: "none", border: "1px solid var(--border-strong)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>Попробовать снова</button>
         </div>
       ) : deals.length === 0 ? (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 40, textAlign: "center", color: "#bbb", fontSize: 13 }}>Зависших сделок нет</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 40, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Зависших сделок нет</div>
       ) : (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#fafafa" }}>
+            <thead style={{ background: "var(--surface-2)" }}>
               <tr>
                 <th style={thStyle}>Клиент</th>
                 <th style={thStyle}>Брокер</th>
@@ -1340,29 +1371,29 @@ function SalesTable({ deals, loading, error, onRefresh }: { deals: RiskDeal[]; l
               {deals.map((d, i) => {
                 const critical = d.age_days >= 180;
                 const warn = d.age_days >= 60;
-                const dotColor = critical ? "#e53e3e" : warn ? "#f6ad55" : "#68d391";
-                const stageColor = STAGE_COLOR[d.stage] || "#888";
+                const dotColor = critical ? "var(--danger)" : warn ? "var(--warn)" : "var(--success)";
+                const stageColor = STAGE_COLOR[d.stage] || "var(--muted)";
                 return (
                   <tr key={i} style={{ transition: "background 0.1s" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 500 }}>{d.client}</div>
-                      {d.is_fired && <div style={{ fontSize: 11, color: "#e53e3e", marginTop: 2 }}>уволен</div>}
+                      {d.is_fired && <div style={{ fontSize: 11, color: "var(--danger)", marginTop: 2 }}>уволен</div>}
                     </td>
-                    <td style={{ ...tdStyle, color: "#666" }}>{d.broker || "—"}</td>
+                    <td style={{ ...tdStyle, color: "var(--ink-2)" }}>{d.broker || "—"}</td>
                     <td style={tdStyle}>
                       <span style={{ background: stageColor + "18", color: stageColor, borderRadius: 6, padding: "3px 8px", fontSize: 12, fontWeight: 500 }}>{d.stage}</span>
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right", fontWeight: 500 }}>{d.commission > 0 ? `${d.commission.toLocaleString("ru-RU")} ₽` : "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
-                      <span style={{ color: critical ? "#e53e3e" : warn ? "#f6ad55" : "#bbb", fontWeight: (critical || warn) ? 600 : 400 }}>{d.age_days} дн.</span>
+                      <span style={{ color: critical ? "var(--danger)" : warn ? "var(--warn)" : "var(--muted)", fontWeight: (critical || warn) ? 600 : 400 }}>{d.age_days} дн.</span>
                     </td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>
                       <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: dotColor }} />
                     </td>
                     <td style={tdStyle}>
-                      <a href={d.url} target="_blank" rel="noreferrer" style={{ color: "#bbb", textDecoration: "none", fontSize: 13 }}>↗</a>
+                      <a href={d.url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", textDecoration: "none", fontSize: 13 }}>↗</a>
                     </td>
                   </tr>
                 );
@@ -1392,16 +1423,16 @@ function SupportTable() {
   };
   React.useEffect(() => { load(); }, [month]);
 
-  const RISK_COLOR: Record<string, string> = { green: "#22c55e", yellow: "#f59e0b", red: "#e53e3e", gray: "#d1d5db" };
-  const RISK_BG:    Record<string, string> = { green: "#f0fdf4", yellow: "#fffbeb", red: "#fef2f2", gray: "#f9fafb" };
+  const RISK_COLOR: Record<string, string> = { green: "#16a34a", yellow: "#d97706", red: "#dc2626", gray: "#cbd0d6" };
+  const RISK_BG:    Record<string, string> = { green: "var(--success-soft)", yellow: "#fff7ed", red: "var(--danger-soft)", gray: "#f6f6f7" };
   const RISK_LABEL: Record<string, string> = { green: "Высокая", yellow: "Средняя", red: "Низкая", gray: "—" };
-  const DOC_COLOR: Record<string, string>  = { "Готово": "#22c55e", "В работе": "#f59e0b", "в работе": "#f59e0b", "Есть риск": "#e53e3e" };
+  const DOC_COLOR: Record<string, string>  = { "Готово": "#16a34a", "В работе": "#d97706", "в работе": "#d97706", "Есть риск": "#dc2626" };
 
-  const thStyle: React.CSSProperties = { padding: "9px 12px", fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap", background: "#fafafa" };
-  const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 12, borderBottom: "1px solid #f5f5f5", verticalAlign: "middle" };
+  const thStyle: React.CSSProperties = { padding: "9px 12px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", background: "var(--surface-2)" };
+  const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 12, borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
 
-  if (loading) return <div style={{ color: "#bbb", padding: 60, textAlign: "center" }}>Загрузка данных из Google Sheets…</div>;
-  if (error)   return <div style={{ color: "#e53e3e", padding: 60, textAlign: "center" }}>{error}<br /><button onClick={() => load()} style={{ marginTop: 12, padding: "6px 16px", borderRadius: 8, border: "1px solid #ebebeb", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Попробовать снова</button></div>;
+  if (loading) return <div style={{ color: "var(--muted)", padding: 60, textAlign: "center" }}>Загрузка данных из Google Sheets…</div>;
+  if (error)   return <div style={{ color: "var(--danger)", padding: 60, textAlign: "center" }}>{error}<br /><button onClick={() => load()} style={{ marginTop: 12, padding: "6px 16px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-strong)", background: "var(--surface)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "var(--ink-2)" }}>Попробовать снова</button></div>;
 
   const s = data.summary;
   const deals = filter === "all" ? data.deals : data.deals.filter((d: any) => d.executor.trim().toLowerCase() === filter.toLowerCase());
@@ -1411,26 +1442,26 @@ function SupportTable() {
       {/* Заголовок */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#111" }}>Отдел сопровождения</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Google Sheets · «{data.sheet_title || "Прогноз"}» · {s.total_deals} сделок</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "var(--ink)" }}>Отдел сопровождения</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Google Sheets · «{data.sheet_title || "Прогноз"}» · {s.total_deals} сделок</div>
         </div>
-        <button onClick={() => load()} style={{ background: "none", border: "1px solid #ebebeb", borderRadius: 8, padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "#888", fontFamily: "inherit" }}>↻ Обновить</button>
+        <button onClick={() => load()} style={{ background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-sm)", padding: "6px 14px", fontSize: 12, cursor: "pointer", color: "var(--ink-2)", fontFamily: "inherit" }}>↻ Обновить</button>
       </div>
 
       {/* Метрики */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10, marginBottom: 20 }}>
         {[
-          { label: "Итог сделок",    value: `${fmt(s.total_amount)} ₽`,    color: "#111" },
-          { label: "Зашло",          value: `${fmt(s.received_amount)} ₽`, color: "#22c55e" },
-          { label: "План комиссии",  value: `${fmt(s.plan_commission)} ₽`, color: "#5b4ff5" },
-          { label: "Подтверждено",   value: `${fmt(s.confirmed)} ₽`,       color: "#22c55e" },
-          { label: "Красные сделки", value: `${fmt(s.red_amount)} ₽`,      color: "#e53e3e" },
-          { label: "Всего сделок",   value: `${s.total_deals}`,            color: "#111", sub: `🟢 ${s.green_deals}  🟡 ${s.yellow_deals}  🔴 ${s.red_deals}` },
+          { label: "Итог сделок",    value: `${fmt(s.total_amount)} ₽`,    color: "var(--ink)" },
+          { label: "Зашло",          value: `${fmt(s.received_amount)} ₽`, color: "var(--success-ink)" },
+          { label: "План комиссии",  value: `${fmt(s.plan_commission)} ₽`, color: "var(--brand-ink)" },
+          { label: "Подтверждено",   value: `${fmt(s.confirmed)} ₽`,       color: "var(--success-ink)" },
+          { label: "Красные сделки", value: `${fmt(s.red_amount)} ₽`,      color: "var(--danger)" },
+          { label: "Всего сделок",   value: `${s.total_deals}`,            color: "var(--ink)", sub: `🟢 ${s.green_deals}  🟡 ${s.yellow_deals}  🔴 ${s.red_deals}` },
         ].map(c => (
-          <div key={c.label} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "12px 14px" }}>
-            <div style={{ fontSize: 10, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>{c.label}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: c.color, letterSpacing: "-0.5px" }}>{c.value}</div>
-            {c.sub && <div style={{ fontSize: 10, color: "#bbb", marginTop: 3 }}>{c.sub}</div>}
+          <div key={c.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "12px 14px", boxShadow: "var(--shadow-xs)" }}>
+            <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4, fontWeight: 600 }}>{c.label}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: c.color, letterSpacing: "-0.02em" }}>{c.value}</div>
+            {c.sub && <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>{c.sub}</div>}
           </div>
         ))}
       </div>
@@ -1440,10 +1471,10 @@ function SupportTable() {
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {data.months.map((m: string) => (
             <button key={m} onClick={() => setMonth(m)}
-              style={{ padding: "5px 14px", borderRadius: 20, border: "1px solid", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
-                borderColor: data.month === m ? "#111" : "#e0e0e0",
-                background: data.month === m ? "#111" : "#fff",
-                color: data.month === m ? "#fff" : "#555", fontWeight: data.month === m ? 600 : 400 }}>
+              style={{ padding: "5px 14px", borderRadius: "var(--r-pill)", border: "1px solid", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
+                borderColor: data.month === m ? "var(--ink)" : "var(--border-strong)",
+                background: data.month === m ? "var(--ink)" : "var(--surface)",
+                color: data.month === m ? "var(--surface)" : "var(--ink-2)", fontWeight: data.month === m ? 600 : 400, transition: "background var(--dur) var(--ease-out)" }}>
               {m}
             </button>
           ))}
@@ -1454,17 +1485,17 @@ function SupportTable() {
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {(["all", "Меркулова", "Добрицкая"] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: "5px 14px", borderRadius: 20, border: "1px solid", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-              borderColor: filter === f ? "#5b4ff5" : "#e0e0e0",
-              background: filter === f ? "#5b4ff5" : "#fff",
-              color: filter === f ? "#fff" : "#555", fontWeight: filter === f ? 600 : 400 }}>
+            style={{ padding: "5px 14px", borderRadius: "var(--r-pill)", border: "1px solid", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+              borderColor: filter === f ? "var(--brand)" : "var(--border-strong)",
+              background: filter === f ? "var(--brand)" : "var(--surface)",
+              color: filter === f ? "var(--surface)" : "var(--ink-2)", fontWeight: filter === f ? 600 : 400, transition: "background var(--dur) var(--ease-out)" }}>
             {f === "all" ? "Все" : f}
           </button>
         ))}
       </div>
 
       {/* Таблица */}
-      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "auto" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
           <thead>
             <tr>
@@ -1484,42 +1515,42 @@ function SupportTable() {
           <tbody>
             {deals.map((d: any, i: number) => (
               <tr key={i}
-                style={{ background: d.risk_level === "red" ? "#fef9f9" : "transparent", transition: "background 0.1s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f8f8ff")}
-                onMouseLeave={e => (e.currentTarget.style.background = d.risk_level === "red" ? "#fef9f9" : "transparent")}>
+                style={{ background: d.risk_level === "red" ? "var(--danger-soft)" : "transparent", transition: "background var(--dur) var(--ease-out)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                onMouseLeave={e => (e.currentTarget.style.background = d.risk_level === "red" ? "var(--danger-soft)" : "transparent")}>
                 <td style={{ ...tdStyle, textAlign: "center" }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: RISK_COLOR[d.risk_level] || "#ddd" }} title={RISK_LABEL[d.risk_level]} />
+                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: RISK_COLOR[d.risk_level] || "var(--border-strong)" }} title={RISK_LABEL[d.risk_level]} />
                 </td>
-                <td style={{ ...tdStyle, fontWeight: 500, color: "#444", whiteSpace: "nowrap" }}>{d.executor}</td>
-                <td style={{ ...tdStyle, fontWeight: 500, maxWidth: 220 }}>
+                <td style={{ ...tdStyle, fontWeight: 500, color: "var(--ink-2)", whiteSpace: "nowrap" }}>{d.executor}</td>
+                <td style={{ ...tdStyle, fontWeight: 500, maxWidth: 220, color: "var(--ink)" }}>
                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.client_obj}>{d.client_obj}</div>
                 </td>
-                <td style={{ ...tdStyle, color: "#666", maxWidth: 160 }}>
+                <td style={{ ...tdStyle, color: "var(--ink-2)", maxWidth: 160 }}>
                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.broker}>{d.broker || "—"}</div>
                 </td>
-                <td style={{ ...tdStyle, color: "#888", whiteSpace: "nowrap" }}>{d.rg || "—"}</td>
-                <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: d.commission > 0 ? "#111" : "#ccc" }}>
+                <td style={{ ...tdStyle, color: "var(--muted)", whiteSpace: "nowrap" }}>{d.rg || "—"}</td>
+                <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: d.commission > 0 ? "var(--ink)" : "var(--faint)" }}>
                   {d.commission > 0 ? `${fmt(d.commission)} ₽` : "—"}
                 </td>
-                <td style={{ ...tdStyle, color: "#666", whiteSpace: "nowrap" }}>{d.pay_date || "—"}</td>
+                <td style={{ ...tdStyle, color: "var(--ink-2)", whiteSpace: "nowrap" }}>{d.pay_date || "—"}</td>
                 <td style={tdStyle}>
                   {d.doc_status ? (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: DOC_COLOR[d.doc_status] || "#888", background: (DOC_COLOR[d.doc_status] || "#888") + "18", borderRadius: 5, padding: "2px 7px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: DOC_COLOR[d.doc_status] || "#83878e", background: (DOC_COLOR[d.doc_status] || "#83878e") + "18", borderRadius: 5, padding: "2px 7px" }}>
                       {d.doc_status}
                     </span>
-                  ) : <span style={{ color: "#ccc" }}>—</span>}
+                  ) : <span style={{ color: "var(--faint)" }}>—</span>}
                 </td>
-                <td style={{ ...tdStyle, color: "#888", fontSize: 11, maxWidth: 140 }}>
+                <td style={{ ...tdStyle, color: "var(--muted)", fontSize: 11, maxWidth: 140 }}>
                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.ext_stage}>{d.ext_stage || "—"}</div>
                 </td>
-                <td style={{ ...tdStyle, color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>{d.mortgage || "—"}</td>
+                <td style={{ ...tdStyle, color: "var(--muted)", fontSize: 11, whiteSpace: "nowrap" }}>{d.mortgage || "—"}</td>
                 <td style={{ ...tdStyle, textAlign: "center" }}>
                   {d.crm_url ? (
                     <a href={d.crm_url} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 11, color: "#5b4ff5", textDecoration: "none", background: "#f0f0ff", borderRadius: 5, padding: "2px 7px" }}>
+                      style={{ fontSize: 11, color: "var(--brand-ink)", textDecoration: "none", background: "var(--brand-soft)", borderRadius: 5, padding: "2px 7px" }}>
                       #{d.deal_id}
                     </a>
-                  ) : <span style={{ color: "#ccc" }}>—</span>}
+                  ) : <span style={{ color: "var(--faint)" }}>—</span>}
                 </td>
               </tr>
             ))}
@@ -1528,8 +1559,8 @@ function SupportTable() {
       </div>
 
       {/* Легенда */}
-      <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "#aaa" }}>
-        {[["#22c55e", "Высокая вероятность"], ["#f59e0b", "Средняя / требует контроля"], ["#e53e3e", "Высокий риск"]].map(([c, l]) => (
+      <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "var(--muted)" }}>
+        {[["#16a34a", "Высокая вероятность"], ["#d97706", "Средняя / требует контроля"], ["#dc2626", "Высокий риск"]].map(([c, l]) => (
           <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, display: "inline-block" }} />
             {l}
@@ -1549,15 +1580,15 @@ function TeamSection() {
   const mkNode = (id:string, role:string, name:string, color:string, children:N[]=[]): N =>
     ({ id, role, name, color, children, _x:0, _y:0, _sw:0 });
 
-  const C = { founder:"#a78bfa", ceo:"#c4b5fd", mkt:"#6366f1", sales:"#22c55e",
-               ops:"#f59e0b", hr:"#fb923c", fin:"#60a5fa", legal:"#e53e3e", dim:"#555" };
+  const C = { founder:"#a78bfa", ceo:"#c4b5fd", mkt:"var(--brand)", sales:"var(--success)",
+               ops:"var(--warn)", hr:"#fb923c", fin:"#60a5fa", legal:"var(--danger)", dim:"var(--ink-2)" };
 
   const tree: N = mkNode("учредители","Учредители","Ольга & Алексей Изосин", C.founder, [
     mkNode("ceo","CEO / Учредитель","Ольга Изосина", C.ceo, [
       mkNode("mkt-dir","Директор по маркетингу","Юлия Побожьева", C.mkt, [
         mkNode("kontm","Контент-маркетолог","Диана (до сентября)", C.mkt),
-        mkNode("pr","PR-менеджер","Вакансия", "#7f1d1d"),
-        mkNode("intm","Интернет-маркетолог","Вакансия (была Юля)", "#7f1d1d"),
+        mkNode("pr","PR-менеджер","Вакансия", "var(--danger-ink)"),
+        mkNode("intm","Интернет-маркетолог","Вакансия (была Юля)", "var(--danger-ink)"),
         mkNode("video","Видеооператор / Рилс","Елена", C.mkt),
         mkNode("target","Таргетологи ТГ","Виктор", C.mkt),
         mkNode("it","IT / Чат-боты","Антон", C.mkt),
@@ -1577,9 +1608,9 @@ function TeamSection() {
           mkNode("rg-ru","Рук. группы","Руслан", C.sales),
           mkNode("rg-da","Рук. группы","Данил", C.sales),
         ]),
-        mkNode("rop2","РОП №2","Вакансия", "#7f1d1d", [
-          mkNode("rg2","Рук. группы","Вакансия", "#7f1d1d", [
-            mkNode("br2","Брокеры","Вакансия", "#7f1d1d"),
+        mkNode("rop2","РОП №2","Вакансия", "var(--danger-ink)", [
+          mkNode("rg2","Рук. группы","Вакансия", "var(--danger-ink)", [
+            mkNode("br2","Брокеры","Вакансия", "var(--danger-ink)"),
           ]),
         ]),
         mkNode("okk","ОКК","Грачева Екатерина", C.sales, [
@@ -1604,7 +1635,7 @@ function TeamSection() {
         ]),
         mkNode("legal","Юрист","Сима", C.legal),
       ]),
-      mkNode("ba","Бизнес-ассистент","Вакансия", "#7f1d1d"),
+      mkNode("ba","Бизнес-ассистент","Вакансия", "var(--danger-ink)"),
     ]),
   ]);
 
@@ -1689,17 +1720,17 @@ function TeamSection() {
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, padding:"0 24px" }}>
         <div>
-          <h2 style={{ margin:0, fontSize:20, fontWeight:700, color:"#111" }}>Оргструктура</h2>
-          <p style={{ margin:"3px 0 0", color:"#888", fontSize:13 }}>Oazis Estate · версия 4.0</p>
+          <h2 style={{ margin:0, fontSize:20, fontWeight:700, color:"var(--ink)" }}>Оргструктура</h2>
+          <p style={{ margin:"3px 0 0", color:"var(--muted)", fontSize:13 }}>Oazis Estate · версия 4.0</p>
         </div>
         <div style={{ display:"flex", gap:6, alignItems:"center" }}>
           <button onClick={()=>setZoom(z=>Math.min(2,z+0.1))}
-            style={{ padding:"5px 14px", background:"#fff", border:"1px solid #e0e0e0", borderRadius:6, color:"#333", cursor:"pointer", fontSize:16, fontWeight:600, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>+</button>
-          <span style={{ fontSize:12, color:"#888", minWidth:40, textAlign:"center" }}>{Math.round(zoom*100)}%</span>
+            style={{ padding:"5px 14px", background:"var(--surface)", border:"1px solid var(--border-strong)", borderRadius:6, color:"var(--ink)", cursor:"pointer", fontSize:16, fontWeight:600, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>+</button>
+          <span style={{ fontSize:12, color:"var(--muted)", minWidth:40, textAlign:"center" }}>{Math.round(zoom*100)}%</span>
           <button onClick={()=>setZoom(z=>Math.max(0.1,z-0.1))}
-            style={{ padding:"5px 14px", background:"#fff", border:"1px solid #e0e0e0", borderRadius:6, color:"#333", cursor:"pointer", fontSize:16, fontWeight:600, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>−</button>
+            style={{ padding:"5px 14px", background:"var(--surface)", border:"1px solid var(--border-strong)", borderRadius:6, color:"var(--ink)", cursor:"pointer", fontSize:16, fontWeight:600, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>−</button>
           <button onClick={doReset}
-            style={{ padding:"5px 14px", background:"#fff", border:"1px solid #e0e0e0", borderRadius:6, color:"#555", cursor:"pointer", fontSize:12, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>Подогнать</button>
+            style={{ padding:"5px 14px", background:"var(--surface)", border:"1px solid var(--border-strong)", borderRadius:6, color:"var(--ink-2)", cursor:"pointer", fontSize:12, boxShadow:"0 1px 3px rgba(0,0,0,.08)" }}>Подогнать</button>
         </div>
       </div>
 
@@ -1753,11 +1784,11 @@ function TeamSection() {
                 display:"flex", flexDirection:"column", justifyContent:"center",
                 boxShadow: "0 2px 6px rgba(0,0,0,.07)",
               }}>
-                <div style={{ fontSize:9, color:"#94a3b8", lineHeight:1.2, marginBottom:2 }}>
+                <div style={{ fontSize:9, color:"var(--muted)", lineHeight:1.2, marginBottom:2 }}>
                   {node.role}
                 </div>
                 <div style={{ fontSize:11, fontWeight:700, lineHeight:1.3,
-                  color: vac ? "#ef4444" : isFounder || isCeo ? "#7c3aed" : "#1e293b" }}>
+                  color: vac ? "var(--danger)" : isFounder || isCeo ? "#7c3aed" : "#1e293b" }}>
                   {vac ? "● Вакансия" : node.name}
                 </div>
               </div>
@@ -1765,7 +1796,7 @@ function TeamSection() {
           })}
         </div>
       </div>
-      <p style={{ fontSize:11, color:"#bbb", marginTop:6, textAlign:"center" }}>
+      <p style={{ fontSize:11, color:"var(--muted)", marginTop:6, textAlign:"center" }}>
         Колёсико — масштаб · Зажать и потянуть — перемещение
       </p>
     </div>
@@ -1779,13 +1810,13 @@ function BrokerCostsSection() {
   React.useEffect(() => {
     fetch(`${API}/api/sales/broker-costs`).then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
-  if (loading) return <div style={{ color: "#bbb", padding: 40, textAlign: "center" }}>Загрузка…</div>;
-  if (!data) return <div style={{ color: "#e53e3e", padding: 40, textAlign: "center" }}>Ошибка загрузки</div>;
+  if (loading) return <div style={{ color: "var(--muted)", padding: 40, textAlign: "center" }}>Загрузка…</div>;
+  if (!data) return <div style={{ color: "var(--danger)", padding: 40, textAlign: "center" }}>Ошибка загрузки</div>;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Расходы брокеров</h2>
-        <span style={{ fontSize: 12, color: "#999" }}>{data.period}</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{data.period}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
         {[
@@ -1794,33 +1825,33 @@ function BrokerCostsSection() {
           { label: "Комиссионный доход", value: `${fmt(data.total_commission)} ₽`, sub: "агентские" },
           { label: "ROI", value: `${data.roi > 0 ? "+" : ""}${data.roi}%`, sub: "рентабельность", accent: data.roi > 0 },
         ].map(c => (
-          <div key={c.label} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "16px 18px" }}>
-            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>{c.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: (c as any).accent ? "#22c55e" : "#111", letterSpacing: "-0.5px" }}>{c.value}</div>
-            <div style={{ fontSize: 11, color: "#bbb", marginTop: 3 }}>{c.sub}</div>
+          <div key={c.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 18px" }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: (c as any).accent ? "var(--success)" : "var(--ink)", letterSpacing: "-0.5px" }}>{c.value}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>{c.sub}</div>
           </div>
         ))}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
-            <tr style={{ background: "#fafafa", borderBottom: "1px solid #ebebeb" }}>
+            <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
               {["#", "Брокер", "Сделки", "Комиссия", "Выплачено", "Расходы", "% от KV", "Прогноз"].map(h => (
-                <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, color: "#555", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.4px" }}>{h}</th>
+                <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontWeight: 600, color: "var(--ink-2)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.4px" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {data.brokers.map((b: any, i: number) => (
-              <tr key={b.name} style={{ borderBottom: i < data.brokers.length - 1 ? "1px solid #f5f5f5" : "none" }}>
-                <td style={{ padding: "8px 12px", color: "#999" }}>{b.rank}</td>
+              <tr key={b.name} style={{ borderBottom: i < data.brokers.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <td style={{ padding: "8px 12px", color: "var(--muted)" }}>{b.rank}</td>
                 <td style={{ padding: "8px 12px", fontWeight: 500 }}>{b.name}</td>
                 <td style={{ padding: "8px 12px" }}>{b.deals}</td>
                 <td style={{ padding: "8px 12px" }}>{b.commission > 0 ? `${fmt(b.commission)} ₽` : "—"}</td>
                 <td style={{ padding: "8px 12px" }}>{b.paid_out > 0 ? `${fmt(b.paid_out)} ₽` : "—"}</td>
-                <td style={{ padding: "8px 12px", color: "#e53e3e" }}>{b.cost_total > 0 ? `${fmt(b.cost_total)} ₽` : "—"}</td>
+                <td style={{ padding: "8px 12px", color: "var(--danger)" }}>{b.cost_total > 0 ? `${fmt(b.cost_total)} ₽` : "—"}</td>
                 <td style={{ padding: "8px 12px" }}>{b.broker_pct > 0 ? `${b.broker_pct}%` : "—"}</td>
-                <td style={{ padding: "8px 12px", color: "#5b4ff5" }}>{b.forecast_eff > 0 ? `${fmt(b.forecast_eff)} ₽` : "—"}</td>
+                <td style={{ padding: "8px 12px", color: "var(--brand)" }}>{b.forecast_eff > 0 ? `${fmt(b.forecast_eff)} ₽` : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1847,8 +1878,8 @@ function MethodologyCard() {
         title="Как считается эффективность"
         style={{
           width: 26, height: 26, borderRadius: "50%", border: "1.5px solid #d0d0d0",
-          background: open ? "#f0f0f0" : "#fff", cursor: "pointer",
-          fontSize: 13, color: "#888", fontWeight: 700, fontFamily: "inherit",
+          background: open ? "var(--border)" : "var(--surface)", cursor: "pointer",
+          fontSize: 13, color: "var(--muted)", fontWeight: 700, fontFamily: "inherit",
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
         }}
       >?</button>
@@ -1856,15 +1887,15 @@ function MethodologyCard() {
       {open && (
         <div style={{
           position: "absolute", top: 34, right: 0, width: 380, zIndex: 50,
-          background: "#fff", border: "1px solid #e8e8e8", borderRadius: 14,
+          background: "var(--surface)", border: "1px solid #e8e8e8", borderRadius: 14,
           boxShadow: "0 8px 32px rgba(0,0,0,0.10)", padding: "20px 22px",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Как считается эффективность</span>
-            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#bbb", padding: 0 }}>✕</button>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>Как считается эффективность</span>
+            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--muted)", padding: 0 }}>✕</button>
           </div>
 
-          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.7 }}>
+          <div style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.7 }}>
             <p style={{ margin: "0 0 10px" }}>
               <b>Источник данных.</b> Каждый РНП — это Google Таблица с вкладками по месяцам. В самом верху каждой вкладки есть блок <b>«Ключевые метрики»</b> — 4–5 главных показателей отдела на месяц.
             </p>
@@ -1879,9 +1910,9 @@ function MethodologyCard() {
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {[
-                { color: "#22c55e", bg: "#f0fdf4", border: "#bbf7d0", label: "≥ 85% — норма" },
-                { color: "#f59e0b", bg: "#fffbeb", border: "#fde68a", label: "60–84% — под контролем" },
-                { color: "#ef4444", bg: "#fef2f2", border: "#fecaca", label: "< 60% — требует внимания" },
+                { color: "var(--success)", bg: "var(--success-soft)", border: "var(--success-border)", label: "≥ 85% — норма" },
+                { color: "var(--warn)", bg: "var(--warn-soft)", border: "var(--warn-border)", label: "60–84% — под контролем" },
+                { color: "var(--danger)", bg: "var(--danger-soft)", border: "var(--danger-border)", label: "< 60% — требует внимания" },
               ].map(s => (
                 <div key={s.label} style={{ flex: 1, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: s.color }}>●</div>
@@ -1897,19 +1928,19 @@ function MethodologyCard() {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 85) return "#22c55e";
-  if (score >= 60) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 85) return "var(--success)";
+  if (score >= 60) return "var(--warn)";
+  return "var(--danger)";
 }
 function scoreBg(score: number): string {
-  if (score >= 85) return "#f0fdf4";
-  if (score >= 60) return "#fffbeb";
-  return "#fef2f2";
+  if (score >= 85) return "var(--success-soft)";
+  if (score >= 60) return "var(--warn-soft)";
+  return "var(--danger-soft)";
 }
 function scoreBorder(score: number): string {
-  if (score >= 85) return "#bbf7d0";
-  if (score >= 60) return "#fde68a";
-  return "#fecaca";
+  if (score >= 85) return "var(--success-border)";
+  if (score >= 60) return "var(--warn-border)";
+  return "var(--danger-border)";
 }
 function fmtKpiVal(val: number, isMoney: boolean): string {
   if (isMoney) return fmt(val) + " ₽";
@@ -1926,15 +1957,15 @@ function DeptCard({ dept }: { dept: any }) {
   const border = scoreBorder(sc);
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 14, overflow: "hidden", transition: "box-shadow 0.15s" }}
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden", transition: "box-shadow 0.15s" }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(0,0,0,0.07)")}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
       {/* Шапка карточки */}
-      <div style={{ padding: "18px 20px 14px", borderBottom: open ? "1px solid #f0f0f0" : "none" }}>
+      <div style={{ padding: "18px 20px 14px", borderBottom: open ? "1px solid var(--border)" : "none" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 22 }}>{dept.icon}</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{dept.name}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>{dept.name}</span>
           </div>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 6,
@@ -1948,9 +1979,9 @@ function DeptCard({ dept }: { dept: any }) {
 
         {/* Прогресс-бары ключевых KPI */}
         {dept.error ? (
-          <div style={{ fontSize: 12, color: "#ef4444" }}>Ошибка: {dept.error}</div>
+          <div style={{ fontSize: 12, color: "var(--danger)" }}>Ошибка: {dept.error}</div>
         ) : dept.kpis.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#bbb" }}>Нет данных</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет данных</div>
         ) : (
           <div>
             {(open ? dept.kpis : dept.kpis.slice(0, 3)).map((kpi: any, i: number) => {
@@ -1958,16 +1989,16 @@ function DeptCard({ dept }: { dept: any }) {
               const c = scoreColor(kpi.pct);
               return (
                 <div key={i} style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#555", marginBottom: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--ink-2)", marginBottom: 4 }}>
                     <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{kpi.metric}</span>
                     <span style={{ flexShrink: 0, display: "flex", gap: 6, alignItems: "center" }}>
-                      <span style={{ color: "#999" }}>{fmtKpiVal(kpi.fact, kpi.is_money)}</span>
-                      <span style={{ color: "#bbb" }}>/</span>
-                      <span style={{ color: "#bbb" }}>{fmtKpiVal(kpi.plan, kpi.is_money)}</span>
+                      <span style={{ color: "var(--muted)" }}>{fmtKpiVal(kpi.fact, kpi.is_money)}</span>
+                      <span style={{ color: "var(--muted)" }}>/</span>
+                      <span style={{ color: "var(--muted)" }}>{fmtKpiVal(kpi.plan, kpi.is_money)}</span>
                       <span style={{ fontWeight: 700, color: c, minWidth: 36, textAlign: "right" }}>{kpi.pct > 0 ? kpi.pct.toFixed(0) + "%" : "—"}</span>
                     </span>
                   </div>
-                  <div style={{ height: 6, background: "#f0f0f0", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${barW}%`, background: c, borderRadius: 3, transition: "width 0.4s" }} />
                   </div>
                 </div>
@@ -1975,7 +2006,7 @@ function DeptCard({ dept }: { dept: any }) {
             })}
             {dept.kpis.length > 3 && (
               <button onClick={() => setOpen(!open)} style={{
-                marginTop: 4, fontSize: 11, color: "#6366f1", background: "none", border: "none",
+                marginTop: 4, fontSize: 11, color: "var(--brand)", background: "none", border: "none",
                 cursor: "pointer", padding: 0, fontFamily: "inherit", fontWeight: 500,
               }}>
                 {open ? "Свернуть" : `Ещё ${dept.kpis.length - 3} показателя`}
@@ -2009,19 +2040,19 @@ function EfficiencySection() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111" }}>Эффективность по отделам</h2>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>Эффективность по отделам</h2>
             <MethodologyCard />
           </div>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#999" }}>На основании РНП · данные актуальны на сегодня</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>На основании РНП · данные актуальны на сегодня</p>
         </div>
         {/* Выбор месяца */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {monthsThrough(0).map(m => (
             <button key={m} onClick={() => setMonth(m)} style={{
               padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-              background: month === m ? "#111" : "#fff",
-              color: month === m ? "#fff" : "#666",
-              border: `1px solid ${month === m ? "#111" : "#e0e0e0"}`,
+              background: month === m ? "var(--ink)" : "var(--surface)",
+              color: month === m ? "var(--surface)" : "var(--ink-2)",
+              border: `1px solid ${month === m ? "var(--ink)" : "var(--border-strong)"}`,
               fontWeight: month === m ? 600 : 400,
             }}>{m}</button>
           ))}
@@ -2029,10 +2060,10 @@ function EfficiencySection() {
       </div>
 
       {loading && (
-        <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загружаю данные из РНП…</div>
+        <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загружаю данные из РНП…</div>
       )}
       {error && (
-        <div style={{ padding: 40, textAlign: "center", color: "#ef4444", fontSize: 13 }}>{error}</div>
+        <div style={{ padding: 40, textAlign: "center", color: "var(--danger)", fontSize: 13 }}>{error}</div>
       )}
 
       {data && !loading && (
@@ -2047,19 +2078,19 @@ function EfficiencySection() {
             return (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
                 <div style={{ background: scoreBg(avg), border: `1px solid ${scoreBorder(avg)}`, borderRadius: 12, padding: "16px 20px" }}>
-                  <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Среднее по компании</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Среднее по компании</div>
                   <div style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: "-1px" }}>{avg}%</div>
-                  <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{data.month}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{data.month}</div>
                 </div>
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "16px 20px" }}>
-                  <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Лидер</div>
+                <div style={{ background: "var(--success-soft)", border: "1px solid #bbf7d0", borderRadius: 12, padding: "16px 20px" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Лидер</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: "#16a34a" }}>{best?.icon} {best?.name}</div>
-                  <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{best?.score?.toFixed(0)}% выполнения</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{best?.score?.toFixed(0)}% выполнения</div>
                 </div>
-                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "16px 20px" }}>
-                  <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Требует внимания</div>
+                <div style={{ background: "var(--danger-soft)", border: "1px solid #fecaca", borderRadius: 12, padding: "16px 20px" }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Требует внимания</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: "#dc2626" }}>{worst?.icon} {worst?.name}</div>
-                  <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{worst?.score?.toFixed(0)}% выполнения</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{worst?.score?.toFixed(0)}% выполнения</div>
                 </div>
               </div>
             );
@@ -2112,17 +2143,17 @@ function RnpEfficiencySection() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#111" }}>Эффективность компании</h2>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--ink)" }}>Эффективность компании</h2>
             <MethodologyCard />
           </div>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#999" }}>Актуальные данные из всех РНП-таблиц</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>Актуальные данные из всех РНП-таблиц</p>
         </div>
-        <div style={{ display: "flex", gap: 4, background: "#f5f5f5", borderRadius: 10, padding: 4 }}>
+        <div style={{ display: "flex", gap: 4, background: "var(--border)", borderRadius: 10, padding: 4 }}>
           {(["month", "year"] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
               padding: "6px 18px", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
-              background: view === v ? "#fff" : "transparent",
-              color: view === v ? "#111" : "#888",
+              background: view === v ? "var(--surface)" : "transparent",
+              color: view === v ? "var(--ink)" : "var(--muted)",
               border: "none",
               fontWeight: view === v ? 600 : 400,
               boxShadow: view === v ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
@@ -2142,15 +2173,15 @@ function RnpEfficiencySection() {
             {monthsThrough(0).map(m => (
               <button key={m} onClick={() => setMonth(m)} style={{
                 padding: "4px 12px", borderRadius: 16, fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-                background: month === m ? "#111" : "#fff",
-                color: month === m ? "#fff" : "#666",
-                border: `1px solid ${month === m ? "#111" : "#e0e0e0"}`,
+                background: month === m ? "var(--ink)" : "var(--surface)",
+                color: month === m ? "var(--surface)" : "var(--ink-2)",
+                border: `1px solid ${month === m ? "var(--ink)" : "var(--border-strong)"}`,
                 fontWeight: month === m ? 600 : 400,
               }}>{m}</button>
             ))}
           </div>
           {loadingMonth && (
-            <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загружаю данные…</div>
+            <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загружаю данные…</div>
           )}
           {monthData && !loadingMonth && (
             <>
@@ -2163,19 +2194,19 @@ function RnpEfficiencySection() {
                 return (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
                     <div style={{ background: scoreBg(avg), border: `1px solid ${scoreBorder(avg)}`, borderRadius: 12, padding: "16px 20px" }}>
-                      <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Среднее по компании</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Среднее по компании</div>
                       <div style={{ fontSize: 28, fontWeight: 800, color: scoreColor(avg), letterSpacing: "-1px" }}>{avg}%</div>
-                      <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{monthData.month}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{monthData.month}</div>
                     </div>
-                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "16px 20px" }}>
-                      <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Лидер</div>
+                    <div style={{ background: "var(--success-soft)", border: "1px solid #bbf7d0", borderRadius: 12, padding: "16px 20px" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Лидер</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#16a34a" }}>{best?.icon} {best?.name}</div>
-                      <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{best?.score?.toFixed(0)}% выполнения</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{best?.score?.toFixed(0)}% выполнения</div>
                     </div>
-                    <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "16px 20px" }}>
-                      <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Требует внимания</div>
+                    <div style={{ background: "var(--danger-soft)", border: "1px solid #fecaca", borderRadius: 12, padding: "16px 20px" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Требует внимания</div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#dc2626" }}>{worst?.icon} {worst?.name}</div>
-                      <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{worst?.score?.toFixed(0)}% выполнения</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{worst?.score?.toFixed(0)}% выполнения</div>
                     </div>
                   </div>
                 );
@@ -2194,7 +2225,7 @@ function RnpEfficiencySection() {
       {view === "year" && (
         <>
           {loadingYear && (
-            <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>Загружаю данные за год… это может занять 15–20 секунд</div>
+            <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загружаю данные за год… это может занять 15–20 секунд</div>
           )}
           {yearData && !loadingYear && (
             <>
@@ -2205,42 +2236,42 @@ function RnpEfficiencySection() {
                     background: scoreBg(d.avg_score), border: `1px solid ${scoreBorder(d.avg_score)}`,
                     borderRadius: 12, padding: "16px 18px",
                   }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#444", marginBottom: 6 }}>{d.icon} {d.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)", marginBottom: 6 }}>{d.icon} {d.name}</div>
                     <div style={{ fontSize: 28, fontWeight: 800, color: scoreColor(d.avg_score), letterSpacing: "-1px" }}>
                       {d.avg_score > 0 ? d.avg_score.toFixed(0) : "—"}%
                     </div>
-                    <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>ср. за {yearData.year}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>ср. за {yearData.year}</div>
                   </div>
                 ))}
               </div>
 
               {/* Тепловая карта: строки = месяцы, колонки = отделы */}
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 14, overflow: "hidden" }}>
-                <div style={{ padding: "14px 20px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>Динамика по месяцам</span>
-                  <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#bbb" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#22c55e", display: "inline-block" }} />≥85%</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b", display: "inline-block" }} />60–84%</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#ef4444", display: "inline-block" }} />&lt;60%</span>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Динамика по месяцам</span>
+                  <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--muted)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--success)", display: "inline-block" }} />≥85%</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--warn)", display: "inline-block" }} />60–84%</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--danger)", display: "inline-block" }} />&lt;60%</span>
                   </div>
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#fafafa" }}>
-                        <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid #f0f0f0", minWidth: 100 }}>Месяц</th>
+                      <tr style={{ background: "var(--surface-2)" }}>
+                        <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "left", borderBottom: "1px solid var(--border)", minWidth: 100 }}>Месяц</th>
                         {yearData.months[0]?.departments.map((d: any) => (
-                          <th key={d.key} style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "center", borderBottom: "1px solid #f0f0f0", whiteSpace: "nowrap" }}>
+                          <th key={d.key} style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "center", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>
                             {d.icon} {d.name}
                           </th>
                         ))}
-                        <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "center", borderBottom: "1px solid #f0f0f0" }}>Среднее</th>
+                        <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", textAlign: "center", borderBottom: "1px solid var(--border)" }}>Среднее</th>
                       </tr>
                     </thead>
                     <tbody>
                       {yearData.months.map((row: any, i: number) => (
-                        <tr key={row.month} style={{ borderBottom: "1px solid #f5f5f5", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                          <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#333" }}>{row.month}</td>
+                        <tr key={row.month} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)" }}>
+                          <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{row.month}</td>
                           {row.departments.map((d: any) => (
                             <td key={d.key} style={{ padding: "10px 16px", textAlign: "center" }}>
                               {d.score > 0 ? (
@@ -2346,14 +2377,14 @@ function MarketSection() {
     return [{header:"__intro__", body:intro, idx:-1}, ...companies];
   },[texts.seo]);
 
-  const BG     = "#fdf8f5";
+  const BG     = "var(--surface-2)";
   const CARD   = "#ffffff";
-  const BORDER = "#ecddd6";
-  const TEXT   = "#3d2a26";
-  const MUTED  = "#9a7d76";
+  const BORDER = "var(--border)";
+  const TEXT   = "var(--ink)";
+  const MUTED  = "var(--muted)";
   const ACCENT = "#7aa4d4";
-  const UP     = "#2d9e6b";
-  const DOWN   = "#d94040";
+  const UP     = "var(--success)";
+  const DOWN   = "var(--danger)";
 
   return (
     <div style={{padding:"0 0 40px", background: BG, minHeight:"100%"}}>
@@ -2386,7 +2417,7 @@ function MarketSection() {
           <div style={{overflowX:"auto",borderRadius:12,border:`1px solid ${BORDER}`}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead>
-                <tr style={{background:"#fef5ef",color:MUTED,textAlign:"left"}}>
+                <tr style={{background:"var(--surface-2)",color:MUTED,textAlign:"left"}}>
                   {["Компания","Сайт","Визитов (3 мес)","Динамика","Mobile %","ИКС","Скорость D/M","Top-10","Аналитика","Стек"].map(h=>(
                     <th key={h} style={{padding:"10px 12px",borderBottom:`1px solid ${BORDER}`,whiteSpace:"nowrap",fontWeight:600,fontSize:11,textTransform:"uppercase",letterSpacing:"0.4px"}}>{h}</th>
                   ))}
@@ -2397,7 +2428,7 @@ function MarketSection() {
                   const dyn = parseFloat(String(c.dynamics||"0").replace("%",""));
                   const dynColor = dyn>0? UP : dyn<0? DOWN : MUTED;
                   return (
-                    <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,background: i%2===0? CARD :"#faf5f2"}}>
+                    <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,background: i%2===0? CARD :"var(--surface-2)"}}>
                       <td style={{padding:"8px 12px",color:TEXT,fontWeight:600,whiteSpace:"nowrap"}}>{c.name}</td>
                       <td style={{padding:"8px 12px"}}>
                         <a href={`https://${c.site}`} target="_blank" rel="noreferrer"
@@ -2433,14 +2464,14 @@ function MarketSection() {
             return (
               <>
                 {intro && (
-                  <div style={{marginBottom:20,padding:"12px 16px",background:"#fef5ef",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"#5a3e3a",lineHeight:1.65}}>
+                  <div style={{marginBottom:20,padding:"12px 16px",background:"var(--surface-2)",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"var(--ink)",lineHeight:1.65}}>
                     {(intro as string).replace(/^Digital-marketing\s*/i,"").replace(/^Что структура трафика говорит о каждом бизнесе, гипотезы \(Цифры верифицированы\)\s*/,"")}
                   </div>
                 )}
                 {(blocks as string[]).map((block:string, i:number) => {
                   const statsRe = new RegExp(`^(.+?)\\s+((?:(?:${CHANNELS}): [\\d,.]+%(?:\\s*·\\s*)?)+)`);
                   const m = block.match(statsRe);
-                  if (!m) return <div key={i} style={{marginBottom:12,fontSize:13,color:"#5a3e3a",lineHeight:1.65}}>{block}</div>;
+                  if (!m) return <div key={i} style={{marginBottom:12,fontSize:13,color:"var(--ink)",lineHeight:1.65}}>{block}</div>;
                   const companyName = m[1].trim();
                   const statsStr = m[2].trim();
                   const analysis = block.slice(m[0].length).trim();
@@ -2450,8 +2481,8 @@ function MarketSection() {
                   }).filter((s:{label?:string,val?:string}) => s.label && s.val);
                   return (
                     <div key={i} style={{marginBottom:10,border:`1px solid ${BORDER}`,borderRadius:12,overflow:"hidden",background:CARD}}>
-                      <div style={{background:"#fef5ef",padding:"12px 16px",borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"center",gap:10}}>
-                        <div style={{width:4,height:28,borderRadius:2,background:"#b07a5a",flexShrink:0}}/>
+                      <div style={{background:"var(--surface-2)",padding:"12px 16px",borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:4,height:28,borderRadius:2,background:"var(--ink-2)",flexShrink:0}}/>
                         <div style={{fontSize:14,fontWeight:700,color:TEXT}}>{companyName}</div>
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"12px 16px",borderBottom:`1px solid ${BORDER}`}}>
@@ -2459,14 +2490,14 @@ function MarketSection() {
                           const v = parseFloat((s.val||"").replace(",","."));
                           const isHigh = ["Organic","Direct"].includes(s.label||"") && v > 30;
                           return (
-                            <div key={j} style={{background:isHigh?"#f0f4fd":"#faf5f2",border:`1px solid ${isHigh?"#c5d8f0":BORDER}`,borderRadius:8,padding:"4px 10px",fontSize:12}}>
+                            <div key={j} style={{background:isHigh?"var(--brand-soft)":"var(--surface-2)",border:`1px solid ${isHigh?"#c5d8f0":BORDER}`,borderRadius:8,padding:"4px 10px",fontSize:12}}>
                               <span style={{color:MUTED,marginRight:4}}>{s.label}:</span>
                               <span style={{fontWeight:700,color:isHigh?ACCENT:TEXT}}>{s.val}</span>
                             </div>
                           );
                         })}
                       </div>
-                      {analysis && <div style={{padding:"12px 16px",fontSize:13,color:"#5a3e3a",lineHeight:1.72}}>{analysis}</div>}
+                      {analysis && <div style={{padding:"12px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.72}}>{analysis}</div>}
                     </div>
                   );
                 })}
@@ -2504,7 +2535,7 @@ function MarketSection() {
             return (
               <>
                 {intro && (
-                  <div style={{marginBottom:16,padding:"12px 16px",background:"#fef5ef",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"#5a3e3a",lineHeight:1.65}}>
+                  <div style={{marginBottom:16,padding:"12px 16px",background:"var(--surface-2)",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"var(--ink)",lineHeight:1.65}}>
                     {(intro as string).replace(/^Технологии на сайтах\s*/,"")}
                   </div>
                 )}
@@ -2514,11 +2545,11 @@ function MarketSection() {
                   const icon = ICONS[kw] || "•";
                   return (
                     <div key={i} style={{marginBottom:8,border:`1px solid ${BORDER}`,borderRadius:12,overflow:"hidden",background:CARD}}>
-                      <div style={{background:"#fef5ef",padding:"12px 16px",borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{background:"var(--surface-2)",padding:"12px 16px",borderBottom:`1px solid ${BORDER}`,display:"flex",alignItems:"center",gap:10}}>
                         <span style={{fontSize:18,lineHeight:1}}>{icon}</span>
                         <div style={{fontSize:14,fontWeight:700,color:TEXT}}>{kw}</div>
                       </div>
-                      <div style={{padding:"14px 18px",fontSize:13,color:"#5a3e3a",lineHeight:1.75,whiteSpace:"pre-wrap"}}>
+                      <div style={{padding:"14px 18px",fontSize:13,color:"var(--ink)",lineHeight:1.75,whiteSpace:"pre-wrap"}}>
                         {body}
                       </div>
                     </div>
@@ -2538,7 +2569,7 @@ function MarketSection() {
             if(s.header==="__intro__") return (
               <div key={i} style={{marginBottom:16}}>
                 {/* Методология */}
-                <div style={{marginBottom:12,padding:"12px 16px",background:"#fef5ef",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"#5a3e3a",lineHeight:1.65}}>
+                <div style={{marginBottom:12,padding:"12px 16px",background:"var(--surface-2)",borderRadius:10,border:`1px solid ${BORDER}`,fontSize:13,color:"var(--ink)",lineHeight:1.65}}>
                   {s.body.replace(/^Гипотезы по SEO\s*/,"").split(/(?=Сводная таблица)/)[0].trim()}
                 </div>
                 {/* Легенда групп */}
@@ -2558,7 +2589,7 @@ function MarketSection() {
               <div key={i} style={{marginBottom:6,border:`1px solid ${BORDER}`,borderRadius:10,overflow:"hidden"}}>
                 <button onClick={()=>setOpenIdx(openIdx===i?null:i)}
                   style={{width:"100%",textAlign:"left",padding:"12px 16px",
-                    background:openIdx===i?"#fef5ef":CARD,
+                    background:openIdx===i?"var(--surface-2)":CARD,
                     border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",
                     fontFamily:"inherit",gap:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
@@ -2571,8 +2602,8 @@ function MarketSection() {
                   <span style={{color:MUTED,fontSize:13,flexShrink:0}}>{openIdx===i?"▲":"▼"}</span>
                 </button>
                 {openIdx===i && (
-                  <div style={{padding:"14px 18px",background:"#faf5f2",fontSize:13,lineHeight:1.75,
-                    color:"#5a3e3a",maxHeight:600,overflowY:"auto",borderTop:`1px solid ${BORDER}`}}>
+                  <div style={{padding:"14px 18px",background:"var(--surface-2)",fontSize:13,lineHeight:1.75,
+                    color:"var(--ink)",maxHeight:600,overflowY:"auto",borderTop:`1px solid ${BORDER}`}}>
                     {s.body.replace(/^—\s*[\w.-]+\.(?:ru|com|pro|estate|moscow)\s*/,"").split(/(?=[A-ZА-ЯЁ][a-zа-яё]+:)/g).map((chunk:string,j:number)=>{
                       const isSubheader = chunk.length < 120 && chunk.endsWith(":");
                       return isSubheader
@@ -2592,7 +2623,7 @@ function MarketSection() {
         <div style={{overflowX:"auto",borderRadius:12,border:`1px solid ${BORDER}`}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead>
-              <tr style={{background:"#fef5ef",textAlign:"left"}}>
+              <tr style={{background:"var(--surface-2)",textAlign:"left"}}>
                 {["Компания","TG канал","TG контакт","ВКонтакте","YouTube","Instagram","Rutube","Дзен","ОК","WhatsApp","Facebook","TikTok","LinkedIn"].map(h=>(
                   <th key={h} style={{padding:"10px 12px",borderBottom:`1px solid ${BORDER}`,whiteSpace:"nowrap",color:MUTED,fontWeight:600,fontSize:11,textTransform:"uppercase",letterSpacing:"0.4px"}}>{h}</th>
                 ))}
@@ -2605,7 +2636,7 @@ function MarketSection() {
                       style={{color:UP,textDecoration:"none",fontWeight:700}}>✓</a>
                   : <span style={{color:BORDER}}>—</span>;
                 return (
-                  <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,background:i%2===0?CARD:"#faf5f2"}}>
+                  <tr key={i} style={{borderBottom:`1px solid ${BORDER}`,background:i%2===0?CARD:"var(--surface-2)"}}>
                     <td style={{padding:"8px 12px",color:TEXT,fontWeight:600,whiteSpace:"nowrap"}}>{c.name}</td>
                     {[c.telegram_channel,c.telegram_contact,c.vk,c.youtube,c.instagram,c.rutube,c.dzen,c.ok,c.whatsapp,c.facebook,c.tiktok,c.linkedin].map((url,j)=>(
                       <td key={j} style={{padding:"8px 12px",textAlign:"center"}}>{link(url)}</td>
@@ -2625,14 +2656,14 @@ function MarketSection() {
 function LegalSection() {
   const [openCase, setOpenCase] = React.useState(true);
 
-  const BG   = "#fdf8f5";
+  const BG   = "var(--surface-2)";
   const CARD = "#ffffff";
-  const BORDER = "#ecddd6";
-  const TEXT  = "#3d2a26";
-  const MUTED = "#9a7d76";
-  const HIGH  = "#d94040";
+  const BORDER = "var(--border)";
+  const TEXT  = "var(--ink)";
+  const MUTED = "var(--muted)";
+  const HIGH  = "var(--danger)";
   const MED   = "#d97706";
-  const LOW   = "#2d9e6b";
+  const LOW   = "var(--success)";
 
   const risks = [
     {
@@ -2686,7 +2717,7 @@ function LegalSection() {
       {/* Объект: Волна Резидентс */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <div style={{ width: 4, height: 36, borderRadius: 2, background: "#b07a5a" }} />
+          <div style={{ width: 4, height: 36, borderRadius: 2, background: "var(--ink-2)" }} />
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>Волна Резидентс</div>
             <div style={{ fontSize: 12, color: MUTED }}>Volna Residens · ул. Ленина 219Л, Адлер, Сочи</div>
@@ -2699,7 +2730,7 @@ function LegalSection() {
           {/* Шапка кейса */}
           <button onClick={() => setOpenCase(o => !o)} style={{
             width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "14px 18px", background: "#fef5ef", border: "none", cursor: "pointer",
+            padding: "14px 18px", background: "var(--surface-2)", border: "none", cursor: "pointer",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 18 }}>⚖️</span>
@@ -2709,7 +2740,7 @@ function LegalSection() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#fef3c7", color: "#92400e", fontWeight: 600 }}>
+              <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 20, background: "#fef3c7", color: "var(--warn-ink)", fontWeight: 600 }}>
                 Остаток не получен
               </span>
               <span style={{ color: MUTED, fontSize: 14 }}>{openCase ? "▲" : "▼"}</span>
@@ -2720,7 +2751,7 @@ function LegalSection() {
             <div style={{ padding: "16px 18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Суть */}
-              <div style={{ fontSize: 13, color: "#5a3e3a", lineHeight: 1.7, background: "#faf5f2", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.7, background: "var(--surface-2)", borderRadius: 8, padding: "12px 14px" }}>
                 ИП Изосин (Агент) заключил АД № 2-4258 от 25.02.2026 с ИП Греков В.Е. (Принципал), действующим как посредник в интересах застройщика ООО «СЗ Файв Старс». Объект — нежилое помещение по адресу ул. Ленина 219Л, Адлерский р-н, Сочи. Покупатель — Бражников Г.В. Основная сделка с покупателем оформлена как ДКП будущей недвижимости — схема в обход 214-ФЗ. ДС № 1 к АД расширило ставку вознаграждения до 20% и добавило обязательство конфиденциальности на 5 лет.
               </div>
 
@@ -2732,7 +2763,7 @@ function LegalSection() {
                   { label: "Выплачено 02.03.2026",    value: "3 545 795 ₽",  color: LOW },
                   { label: "Остаток к получению",     value: "2 899 341 ₽",  color: MED },
                 ].map(c => (
-                  <div key={c.label} style={{ background: "#faf5f2", borderRadius: 8, padding: "12px 14px", border: `1px solid ${BORDER}` }}>
+                  <div key={c.label} style={{ background: "var(--surface-2)", borderRadius: 8, padding: "12px 14px", border: `1px solid ${BORDER}` }}>
                     <div style={{ fontSize: 11, color: MUTED, marginBottom: 4 }}>{c.label}</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: c.color }}>{c.value}</div>
                     {(c as any).sub && <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{(c as any).sub}</div>}
@@ -2747,7 +2778,7 @@ function LegalSection() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {risks.map(r => (
-                    <div key={r.label} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "#faf5f2", borderRadius: 8, padding: "10px 14px", border: `1px solid ${BORDER}` }}>
+                    <div key={r.label} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "var(--surface-2)", borderRadius: 8, padding: "10px 14px", border: `1px solid ${BORDER}` }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: sColor(r.severity), flexShrink: 0, marginTop: 5 }} />
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{r.label}</div>
@@ -2769,7 +2800,7 @@ function LegalSection() {
                     { text: "Остаток 2 899 341 ₽ — дата утверждения Отчёта Принципалом не зафиксирована, срок выплаты не определён", done: false },
                     { text: "Дата в ДС к АД не проставлена — требует исправления", done: false },
                   ].map(s => (
-                    <div key={s.text} style={{ fontSize: 13, color: s.done ? "#5a3e3a" : MED, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <div key={s.text} style={{ fontSize: 13, color: s.done ? "var(--ink)" : MED, display: "flex", gap: 8, alignItems: "flex-start" }}>
                       <span style={{ color: s.done ? LOW : MED, flexShrink: 0 }}>{s.done ? "✓" : "!"}</span>
                       {s.text}
                     </div>
@@ -2778,9 +2809,9 @@ function LegalSection() {
               </div>
 
               {/* Вывод */}
-              <div style={{ background: "#f0f4fd", borderRadius: 8, padding: "12px 14px", borderLeft: "3px solid #7aa4d4" }}>
-                <div style={{ fontSize: 12, color: "#4a6fa5", fontWeight: 600, marginBottom: 6 }}>Вывод и рекомендации</div>
-                <div style={{ fontSize: 13, color: "#3d4f6e", lineHeight: 1.65 }}>
+              <div style={{ background: "var(--brand-soft)", borderRadius: 8, padding: "12px 14px", borderLeft: "3px solid #7aa4d4" }}>
+                <div style={{ fontSize: 12, color: "var(--ink-2)", fontWeight: 600, marginBottom: 6 }}>Вывод и рекомендации</div>
+                <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.65 }}>
                   Зафиксировать дату утверждения Отчёта-Акта у Принципала и запустить отсчёт 8 банковских дней для остатка. Простановить дату в ДС № 1 к АД. В будущих сделках по схеме ДКП будущей недвижимости — не допускать несовпадения адреса в АД и Отчёте-Акте, фиксировать дистанцию Oazis от основной сделки с покупателем.
                 </div>
               </div>
@@ -2792,7 +2823,7 @@ function LegalSection() {
 
       {/* Легенда рисков */}
       <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
-        {[["#d94040", "Критичный риск"], ["#d97706", "Средний риск"], ["#2d9e6b", "Выполнено"]].map(([c, l]) => (
+        {[["var(--danger)", "Критичный риск"], ["#d97706", "Средний риск"], ["var(--success)", "Выполнено"]].map(([c, l]) => (
           <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
             <span style={{ fontSize: 12, color: MUTED }}>{l}</span>
@@ -2832,12 +2863,12 @@ const LP_STATUSES: { key: string; label: string }[] = [
 ];
 
 function LegalProcessesSection() {
-  const BG   = "#fdf8f5";
+  const BG   = "var(--surface-2)";
   const CARD = "#ffffff";
-  const BORDER = "#ecddd6";
-  const TEXT  = "#3d2a26";
-  const MUTED = "#9a7d76";
-  const ACCENT = "#b07a5a";
+  const BORDER = "var(--border)";
+  const TEXT  = "var(--ink)";
+  const MUTED = "var(--muted)";
+  const ACCENT = "var(--ink-2)";
 
   const [items, setItems] = React.useState<LegalQuestion[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -2902,7 +2933,7 @@ function LegalProcessesSection() {
     padding: "6px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer",
     border: `1px solid ${active ? ACCENT : BORDER}`,
     background: active ? ACCENT : CARD,
-    color: active ? "#fff" : TEXT, whiteSpace: "nowrap",
+    color: active ? "var(--surface)" : TEXT, whiteSpace: "nowrap",
   });
 
   return (
@@ -2915,7 +2946,7 @@ function LegalProcessesSection() {
         </div>
         <button onClick={() => setAdding(a => !a)} style={{
           padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer",
-          background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 600,
+          background: ACCENT, color: "var(--surface)", fontSize: 13, fontWeight: 600,
         }}>+ Вопрос</button>
       </div>
 
@@ -2941,7 +2972,7 @@ function LegalProcessesSection() {
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={createQuestion} disabled={!newTitle.trim()} style={{
               padding: "9px 16px", borderRadius: 8, border: "none", cursor: newTitle.trim() ? "pointer" : "default",
-              background: newTitle.trim() ? ACCENT : "#ddd", color: "#fff", fontSize: 13, fontWeight: 600,
+              background: newTitle.trim() ? ACCENT : "#ddd", color: "var(--surface)", fontSize: 13, fontWeight: 600,
             }}>Добавить</button>
             <button onClick={() => { setAdding(false); setNewTitle(""); setNewNotes(""); }} style={{
               padding: "9px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, cursor: "pointer",
@@ -2992,7 +3023,7 @@ function LegalProcessesSection() {
                       <button key={s.key} onClick={() => patchQuestion(q.id, { status: s.key })} style={{
                         padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
                         border: `1px solid ${active ? ACCENT : BORDER}`,
-                        background: active ? ACCENT : CARD, color: active ? "#fff" : MUTED,
+                        background: active ? ACCENT : CARD, color: active ? "var(--surface)" : MUTED,
                       }}>{s.label}</button>
                     );
                   })}
@@ -3023,9 +3054,9 @@ function LegalProcessesSection() {
 
 // ── HR раздел ─────────────────────────────────────────────────────────────────
 const TONE: Record<string, { bg: string; border: string; color: string; dot: string }> = {
-  good: { bg: "#f0fdf4", border: "#bbf7d0", color: "#15803d", dot: "#22c55e" },
-  warn: { bg: "#fffbeb", border: "#fde68a", color: "#b45309", dot: "#f59e0b" },
-  bad:  { bg: "#fef2f2", border: "#fecaca", color: "#dc2626", dot: "#ef4444" },
+  good: { bg: "var(--success-soft)", border: "var(--success-border)", color: "var(--success-ink)", dot: "var(--success)" },
+  warn: { bg: "var(--warn-soft)", border: "var(--warn-border)", color: "var(--warn-ink)", dot: "var(--warn)" },
+  bad:  { bg: "var(--danger-soft)", border: "var(--danger-border)", color: "#dc2626", dot: "var(--danger)" },
 };
 const fmtRub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
 
@@ -3040,15 +3071,15 @@ function HRDashboard() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#111" }}>HR · Подбор и команда</div>
-          <div style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Данные из Google Sheets · обновление каждые 3 мин</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>HR · Подбор и команда</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Данные из Google Sheets · обновление каждые 3 мин</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {tabs.map(t => (
             <button key={t.key} onClick={() => setView(t.key)} style={{
               fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-              background: view === t.key ? "#111" : "none", color: view === t.key ? "#fff" : "#999",
-              border: view === t.key ? "none" : "1px solid #e0e0e0",
+              background: view === t.key ? "var(--ink)" : "none", color: view === t.key ? "var(--surface)" : "var(--muted)",
+              border: view === t.key ? "none" : "1px solid var(--border-strong)",
             }}>{t.label}</button>
           ))}
         </div>
@@ -3060,7 +3091,7 @@ function HRDashboard() {
 }
 
 function HRLoading({ text }: { text: string }) {
-  return <div style={{ padding: 60, textAlign: "center", color: "#bbb", fontSize: 13 }}>{text}</div>;
+  return <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>{text}</div>;
 }
 
 function HRAnalyticsView() {
@@ -3073,10 +3104,10 @@ function HRAnalyticsView() {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
         {data.metrics.map((m: any, i: number) => (
-          <div key={i} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: "-0.5px" }}>{m.value}</div>
-            <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{m.sub}</div>
+          <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.5px" }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{m.sub}</div>
           </div>
         ))}
       </div>
@@ -3088,7 +3119,7 @@ function HRAnalyticsView() {
           const basis = f.chart.type === "headcount" ? "1 1 300px"
             : f.chart.type === "funnel" ? "1 1 250px" : "1 1 190px";
           return (
-            <div key={i} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 10, padding: "14px 16px", flex: basis, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px", flex: basis, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: t.color, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>{f.title}</div>
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <HRFindingChart chart={f.chart} tone={t} />
@@ -3099,7 +3130,7 @@ function HRAnalyticsView() {
       </div>
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Выводы по подбору</div>
-      <div style={{ fontSize: 12, color: "#bbb", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
         Сформированы строго по цифрам из таблиц · {data.month} {data.year}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3110,7 +3141,7 @@ function HRAnalyticsView() {
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.dot, marginTop: 6, flexShrink: 0 }} />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: t.color, marginBottom: 4 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: "#444", lineHeight: 1.55 }}>{f.text}</div>
+                <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>{f.text}</div>
               </div>
             </div>
           );
@@ -3134,9 +3165,9 @@ function HRFindingChart({ chart, tone }: { chart: any; tone: { color: string; do
 
 // цвет по порогам (для текучести): низкая — хорошо, высокая — плохо
 function gaugeColor(v: number, warn: number, bad: number) {
-  if (v >= bad) return "#ef4444";
-  if (v >= warn) return "#f59e0b";
-  return "#22c55e";
+  if (v >= bad) return "var(--danger)";
+  if (v >= warn) return "var(--warn)";
+  return "var(--success)";
 }
 function polarPt(cx: number, cy: number, r: number, deg: number) {
   const a = (deg * Math.PI) / 180;
@@ -3169,8 +3200,8 @@ function MiniHeadcount({ chart, tone }: { chart: any; tone: { dot: string } }) {
         const fh = (fired[i] || 0) / bMax * (barBand - 2);
         return (
           <g key={i}>
-            <rect x={cx - hbw - 1} y={baseY - hh} width={hbw} height={Math.max(hh, hired[i] ? 1.5 : 0)} rx={1.5} fill="#22c55e" />
-            <rect x={cx + 1} y={baseY} width={hbw} height={Math.max(fh, fired[i] ? 1.5 : 0)} rx={1.5} fill="#ef4444" />
+            <rect x={cx - hbw - 1} y={baseY - hh} width={hbw} height={Math.max(hh, hired[i] ? 1.5 : 0)} rx={1.5} style={{ fill: "var(--success)" }} />
+            <rect x={cx + 1} y={baseY} width={hbw} height={Math.max(fh, fired[i] ? 1.5 : 0)} rx={1.5} style={{ fill: "var(--danger)" }} />
           </g>
         );
       })}
@@ -3204,7 +3235,7 @@ function MiniGauge({ chart }: { chart: any }) {
     <svg viewBox={`0 0 ${W} ${H}`} width={W} style={{ maxWidth: "100%", display: "block" }}>
       <path d={`M ${bx0} ${by0} A ${r} ${r} 0 0 1 ${bx1} ${by1}`} fill="none" stroke="#eceef1" strokeWidth={sw} strokeLinecap="round" />
       <path d={`M ${bx0} ${by0} A ${r} ${r} 0 0 1 ${vx} ${vy}`} fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" />
-      <text x={cx} y={cy - 8} textAnchor="middle" fontSize={22} fontWeight={800} fill="#111">{chart.value}{chart.unit || ""}</text>
+      <text x={cx} y={cy - 8} textAnchor="middle" fontSize={22} fontWeight={800} fill="#111111">{chart.value}{chart.unit || ""}</text>
       <text x={cx} y={cy + 8} textAnchor="middle" fontSize={9} fill="#9ca3af">{chart.caption || ""}</text>
     </svg>
   );
@@ -3276,7 +3307,7 @@ function MiniProgress({ chart, tone }: { chart: any; tone: { dot: string } }) {
   const val = Math.max(0, Math.min(chart.value || 0, max));
   const frac = val / max;
   const R = 38, sw = 12, C = 2 * Math.PI * R;
-  const col = frac >= 0.9 ? "#22c55e" : frac >= 0.6 ? tone.dot : "#f59e0b";
+  const col = frac >= 0.9 ? "var(--success)" : frac >= 0.6 ? tone.dot : "var(--warn)";
   return (
     <svg viewBox="0 0 92 92" width={92} style={{ display: "block", maxWidth: "100%" }}>
       <g transform="rotate(-90 46 46)">
@@ -3284,7 +3315,7 @@ function MiniProgress({ chart, tone }: { chart: any; tone: { dot: string } }) {
         <circle cx={46} cy={46} r={R} fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round"
           strokeDasharray={`${frac * C} ${C}`} />
       </g>
-      <text x={46} y={44} textAnchor="middle" fontSize={19} fontWeight={800} fill="#111">{chart.value}{chart.unit || ""}</text>
+      <text x={46} y={44} textAnchor="middle" fontSize={19} fontWeight={800} fill="#111111">{chart.value}{chart.unit || ""}</text>
       <text x={46} y={58} textAnchor="middle" fontSize={8.5} fill="#9ca3af">{chart.caption || ""}</text>
     </svg>
   );
@@ -3314,8 +3345,8 @@ function HRHeadcountView() {
         {["2025", "2026"].map(y => (
           <button key={y} onClick={() => setYear(y)} style={{
             fontSize: 12, fontWeight: 500, padding: "5px 14px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-            background: year === y ? "#6366f1" : "none", color: year === y ? "#fff" : "#999",
-            border: year === y ? "none" : "1px solid #e0e0e0",
+            background: year === y ? "var(--brand)" : "none", color: year === y ? "var(--surface)" : "var(--muted)",
+            border: year === y ? "none" : "1px solid var(--border-strong)",
           }}>{y}</button>
         ))}
       </div>
@@ -3328,21 +3359,21 @@ function HRHeadcountView() {
               { label: "Уволено YTD", value: data.ytd.fired, sub: `с начала ${year}` },
               { label: "Чистое изменение", value: `${data.ytd.net >= 0 ? "+" : ""}${data.ytd.net}`, sub: data.current.month, warn: data.ytd.net < 0 },
             ].map((m: any, i: number) => (
-              <div key={i} style={{ background: m.warn ? "#fef2f2" : "#fff", border: `1px solid ${m.warn ? "#fecaca" : "#ebebeb"}`, borderRadius: 10, padding: "16px 20px" }}>
-                <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: m.warn ? "#dc2626" : "#111", letterSpacing: "-0.5px" }}>{m.value}</div>
-                <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{m.sub}</div>
+              <div key={i} style={{ background: m.warn ? "var(--danger-soft)" : "var(--surface)", border: `1px solid ${m.warn ? "var(--danger-border)" : "var(--border)"}`, borderRadius: 10, padding: "16px 20px" }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: m.warn ? "#dc2626" : "var(--ink)", letterSpacing: "-0.5px" }}>{m.value}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{m.sub}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
-              <thead style={{ background: "#fafafa" }}>
+              <thead style={{ background: "var(--surface-2)" }}>
                 <tr>
-                  <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", textAlign: "left", borderBottom: "1px solid #ebebeb", position: "sticky", left: 0, background: "#fafafa", minWidth: 200 }}>Показатель</th>
+                  <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", textAlign: "left", borderBottom: "1px solid var(--border)", position: "sticky", left: 0, background: "var(--surface-2)", minWidth: 200 }}>Показатель</th>
                   {data.months.map((m: string) => (
-                    <th key={m} style={{ padding: "10px 10px", fontSize: 11, fontWeight: 600, color: "#999", textAlign: "center", borderBottom: "1px solid #ebebeb", whiteSpace: "nowrap" }}>{m.slice(0, 3)}</th>
+                    <th key={m} style={{ padding: "10px 10px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textAlign: "center", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{m.slice(0, 3)}</th>
                   ))}
                 </tr>
               </thead>
@@ -3351,18 +3382,18 @@ function HRHeadcountView() {
                   const isSub = r.kind === "sub";
                   const isTotal = r.kind === "total";
                   return (
-                    <tr key={i} style={{ background: isTotal ? "#f9f9ff" : "transparent" }}>
+                    <tr key={i} style={{ background: isTotal ? "var(--brand-soft)" : "transparent" }}>
                       <td style={{
                         padding: isSub ? "7px 16px 7px 32px" : "9px 16px",
                         fontSize: 13, fontWeight: isTotal ? 700 : isSub ? 400 : 600,
-                        color: isTotal ? "#6366f1" : isSub ? "#888" : "#222",
-                        borderBottom: "1px solid #f5f5f5", whiteSpace: "nowrap",
-                        position: "sticky", left: 0, background: isTotal ? "#f9f9ff" : isSub ? "#fdfdfd" : "#fff",
+                        color: isTotal ? "var(--brand)" : isSub ? "var(--muted)" : "var(--ink)",
+                        borderBottom: "1px solid var(--border)", whiteSpace: "nowrap",
+                        position: "sticky", left: 0, background: isTotal ? "var(--brand-soft)" : isSub ? "#fdfdfd" : "var(--surface)",
                       }}>{r.label}</td>
                       {r.values.map((v: number, j: number) => (
                         <td key={j} style={{
-                          padding: "8px 10px", fontSize: 13, textAlign: "center", borderBottom: "1px solid #f5f5f5",
-                          color: v === 0 ? "#ddd" : isTotal ? "#6366f1" : isSub ? "#888" : "#333",
+                          padding: "8px 10px", fontSize: 13, textAlign: "center", borderBottom: "1px solid var(--border)",
+                          color: v === 0 ? "#ddd" : isTotal ? "var(--brand)" : isSub ? "var(--muted)" : "var(--ink)",
                           fontWeight: isTotal ? 700 : 400,
                         }}>{v === 0 ? "·" : v}</td>
                       ))}
@@ -3394,13 +3425,13 @@ function HRRnpView() {
         {MONTHS.map(m => (
           <button key={m} onClick={() => setMonth(m)} style={{
             fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-            background: month === m ? "#6366f1" : "none", color: month === m ? "#fff" : "#999",
-            border: month === m ? "none" : "1px solid #e0e0e0",
+            background: month === m ? "var(--brand)" : "none", color: month === m ? "var(--surface)" : "var(--muted)",
+            border: month === m ? "none" : "1px solid var(--border-strong)",
           }}>{m}</button>
         ))}
       </div>
       {!data ? <HRLoading text="Загружаю РНП…" /> : data.empty ? (
-        <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {data.month} — вкладка ещё не заведена в таблице</div>
+        <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Нет данных за {data.month} — вкладка ещё не заведена в таблице</div>
       ) : (
         <>
           {/* Воронка — карточки */}
@@ -3408,15 +3439,15 @@ function HRRnpView() {
             {data.funnel.map((f: any, i: number) => {
               const ok = (f.pct ?? 0) >= 90;
               const over = (f.pct ?? 0) >= 110;
-              const bg = over ? "#f0fdf4" : ok ? "#fff" : "#fffbeb";
-              const border = over ? "#bbf7d0" : ok ? "#ebebeb" : "#fde68a";
-              const pctColor = over ? "#15803d" : ok ? "#6366f1" : "#b45309";
+              const bg = over ? "var(--success-soft)" : ok ? "var(--surface)" : "var(--warn-soft)";
+              const border = over ? "var(--success-border)" : ok ? "var(--border)" : "var(--warn-border)";
+              const pctColor = over ? "var(--success-ink)" : ok ? "var(--brand)" : "var(--warn-ink)";
               const short = f.label.replace("Общее кол-во ", "").replace("кол-во ", "");
               return (
                 <div key={i} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: "16px 18px" }}>
-                  <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>{short}</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: "#111", marginBottom: 4 }}>{f.fact ?? "—"}</div>
-                  <div style={{ fontSize: 12, color: "#bbb", marginBottom: 6 }}>план {f.plan ?? "—"}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>{short}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{f.fact ?? "—"}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>план {f.plan ?? "—"}</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: pctColor }}>{f.pct != null ? `${f.pct}%` : "—"}</div>
                 </div>
               );
@@ -3424,14 +3455,14 @@ function HRRnpView() {
           </div>
 
           {/* По неделям */}
-          <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden", marginBottom: 24, overflowX: "auto" }}>
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid #ebebeb", fontSize: 13, fontWeight: 600 }}>Разбивка по неделям</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", marginBottom: 24, overflowX: "auto" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600 }}>Разбивка по неделям</div>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
-              <thead style={{ background: "#fafafa" }}>
+              <thead style={{ background: "var(--surface-2)" }}>
                 <tr>
-                  <th style={{ padding: "8px 16px", fontSize: 11, fontWeight: 600, color: "#999", textAlign: "left", borderBottom: "1px solid #ebebeb" }}>Метрика</th>
+                  <th style={{ padding: "8px 16px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>Метрика</th>
                   {[1,2,3,4,5,6].map(w => (
-                    <th key={w} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, color: "#999", textAlign: "center", borderBottom: "1px solid #ebebeb" }}>Неделя {w}</th>
+                    <th key={w} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textAlign: "center", borderBottom: "1px solid var(--border)" }}>Неделя {w}</th>
                   ))}
                 </tr>
               </thead>
@@ -3440,16 +3471,16 @@ function HRRnpView() {
                   const short = f.label.replace("Общее кол-во ", "").replace("кол-во ", "");
                   return (
                     <tr key={i}>
-                      <td style={{ padding: "9px 16px", fontSize: 13, color: "#333", borderBottom: "1px solid #f5f5f5", whiteSpace: "nowrap" }}>{short}</td>
+                      <td style={{ padding: "9px 16px", fontSize: 13, color: "var(--ink)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" }}>{short}</td>
                       {f.weeks.map((w: any, j: number) => {
                         const hasData = w.fact != null || w.plan != null;
                         const ok2 = (w.pct ?? 0) >= 90;
                         return (
-                          <td key={j} style={{ padding: "8px 10px", fontSize: 12, textAlign: "center", borderBottom: "1px solid #f5f5f5" }}>
+                          <td key={j} style={{ padding: "8px 10px", fontSize: 12, textAlign: "center", borderBottom: "1px solid var(--border)" }}>
                             {hasData && (w.fact != null || w.plan != null) ? (
                               <span>
-                                <b style={{ color: ok2 ? "#15803d" : "#b45309" }}>{w.fact ?? "—"}</b>
-                                <span style={{ color: "#ccc" }}>/{w.plan ?? "—"}</span>
+                                <b style={{ color: ok2 ? "var(--success-ink)" : "var(--warn-ink)" }}>{w.fact ?? "—"}</b>
+                                <span style={{ color: "var(--faint)" }}>/{w.plan ?? "—"}</span>
                               </span>
                             ) : <span style={{ color: "#ddd" }}>·</span>}
                           </td>
@@ -3468,20 +3499,20 @@ function HRRnpView() {
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Источники найма</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
                 {data.sections.map((sec: any, si: number) => (
-                  <div key={si} style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden" }}>
-                    <div style={{ padding: "12px 16px", background: "#f9f9ff", borderBottom: "1px solid #ebebeb", fontSize: 13, fontWeight: 700, color: "#6366f1" }}>{sec.title}</div>
+                  <div key={si} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+                    <div style={{ padding: "12px 16px", background: "var(--brand-soft)", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 700, color: "var(--brand)" }}>{sec.title}</div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <tbody>
                         {sec.rows.map((row: any, ri: number) => {
                           const isConv = row.label.toLowerCase().includes("конверсия");
                           const ok3 = (row.pct ?? 0) >= 90;
-                          const pctColor2 = (row.pct ?? 0) >= 110 ? "#15803d" : ok3 ? "#6366f1" : "#b45309";
+                          const pctColor2 = (row.pct ?? 0) >= 110 ? "var(--success-ink)" : ok3 ? "var(--brand)" : "var(--warn-ink)";
                           return (
-                            <tr key={ri} style={{ borderBottom: ri < sec.rows.length - 1 ? "1px solid #f5f5f5" : "none" }}>
-                              <td style={{ padding: "8px 14px", fontSize: 12, color: isConv ? "#999" : "#333", fontStyle: isConv ? "italic" : "normal" }}>{row.label}</td>
-                              <td style={{ padding: "8px 10px", fontSize: 12, textAlign: "right", color: "#aaa" }}>{row.plan != null ? row.plan : "—"}</td>
-                              <td style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: "#222" }}>{row.fact != null ? row.fact : "—"}</td>
-                              <td style={{ padding: "8px 14px", fontSize: 12, textAlign: "right", fontWeight: 600, color: row.pct != null ? pctColor2 : "#bbb", minWidth: 48 }}>{row.pct != null ? `${row.pct}%` : "—"}</td>
+                            <tr key={ri} style={{ borderBottom: ri < sec.rows.length - 1 ? "1px solid var(--border)" : "none" }}>
+                              <td style={{ padding: "8px 14px", fontSize: 12, color: isConv ? "var(--muted)" : "var(--ink)", fontStyle: isConv ? "italic" : "normal" }}>{row.label}</td>
+                              <td style={{ padding: "8px 10px", fontSize: 12, textAlign: "right", color: "var(--muted)" }}>{row.plan != null ? row.plan : "—"}</td>
+                              <td style={{ padding: "8px 10px", fontSize: 13, textAlign: "right", fontWeight: 600, color: "var(--ink)" }}>{row.fact != null ? row.fact : "—"}</td>
+                              <td style={{ padding: "8px 14px", fontSize: 12, textAlign: "right", fontWeight: 600, color: row.pct != null ? pctColor2 : "var(--muted)", minWidth: 48 }}>{row.pct != null ? `${row.pct}%` : "—"}</td>
                             </tr>
                           );
                         })}
@@ -3509,7 +3540,7 @@ function HRSalaryView() {
   }, [month]);
 
   const fmtRub2 = (v: number) => `${Math.round(v).toLocaleString("ru-RU")} ₽`;
-  const pctColor = (v: number) => v >= 100 ? "#15803d" : v >= 80 ? "#b45309" : "#dc2626";
+  const pctColor = (v: number) => v >= 100 ? "var(--success-ink)" : v >= 80 ? "var(--warn-ink)" : "#dc2626";
 
   return (
     <div>
@@ -3517,13 +3548,13 @@ function HRSalaryView() {
         {T3_MONTHS.map(m => (
           <button key={m} onClick={() => setMonth(m)} style={{
             fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
-            background: month === m ? "#6366f1" : "none", color: month === m ? "#fff" : "#999",
-            border: month === m ? "none" : "1px solid #e0e0e0",
+            background: month === m ? "var(--brand)" : "none", color: month === m ? "var(--surface)" : "var(--muted)",
+            border: month === m ? "none" : "1px solid var(--border-strong)",
           }}>{m}</button>
         ))}
       </div>
       {!data ? <HRLoading text="Загружаю данные по зарплате…" /> : (data.empty || data.error) ? (
-        <div style={{ color: "#bbb", textAlign: "center", padding: 40 }}>Нет данных за {data.month || month} — вкладка ещё не заведена в таблице</div>
+        <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Нет данных за {data.month || month} — вкладка ещё не заведена в таблице</div>
       ) : (
         <>
           {/* Карточки зарплаты */}
@@ -3535,29 +3566,29 @@ function HRSalaryView() {
               { label: "Итого к выплате", value: fmtRub2(data.salary.oklad + data.totals.fact_premii), sub: data.salary.ratio || "оклад + факт премии", accent: true, ok: data.overall_pct >= 100 },
             ].map((m: any, i: number) => (
               <div key={i} style={{
-                background: m.accent ? (m.ok ? "#f0fdf4" : "#fffbeb") : "#fff",
-                border: `1px solid ${m.accent ? (m.ok ? "#bbf7d0" : "#fde68a") : "#ebebeb"}`,
+                background: m.accent ? (m.ok ? "var(--success-soft)" : "var(--warn-soft)") : "var(--surface)",
+                border: `1px solid ${m.accent ? (m.ok ? "var(--success-border)" : "var(--warn-border)") : "var(--border)"}`,
                 borderRadius: 10, padding: "16px 20px"
               }}>
-                <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: m.accent ? pctColor(data.overall_pct) : "#111", letterSpacing: "-0.5px" }}>{m.value}</div>
-                <div style={{ fontSize: 11, color: "#bbb", marginTop: 3 }}>{m.sub}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>{m.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: m.accent ? pctColor(data.overall_pct) : "var(--ink)", letterSpacing: "-0.5px" }}>{m.value}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>{m.sub}</div>
               </div>
             ))}
           </div>
 
           {data.plan_text && (
-            <div style={{ background: "#f9f9ff", border: "1px solid #e0e0f0", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: "#6366f1", fontWeight: 500 }}>{data.plan_text}</div>
+            <div style={{ background: "var(--brand-soft)", border: "1px solid #e0e0f0", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13, color: "var(--brand)", fontWeight: 500 }}>{data.plan_text}</div>
           )}
 
           {/* Таблица KPI */}
-          <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
-            <div style={{ padding: "14px 18px", borderBottom: "1px solid #ebebeb", fontSize: 13, fontWeight: 600 }}>KPI на {month.toLowerCase()}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600 }}>KPI на {month.toLowerCase()}</div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead style={{ background: "#fafafa" }}>
+              <thead style={{ background: "var(--surface-2)" }}>
                 <tr>
                   {["Показатель", "Вес", "ФОТ", "План", "Факт", "%", "Выплата"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 14px", fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid #ebebeb" }}>{h}</th>
+                    <th key={h} style={{ padding: "9px 14px", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", textAlign: i === 0 ? "left" : "right", borderBottom: "1px solid var(--border)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -3567,21 +3598,21 @@ function HRSalaryView() {
                   const isLast = i === data.kpi.length - 1;
                   return (
                     <tr key={i}>
-                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#222", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{k.name}</td>
-                      <td style={{ padding: "11px 14px", fontSize: 12, color: "#999", textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{k.weight}%</td>
-                      <td style={{ padding: "11px 14px", fontSize: 12, color: "#aaa", textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{fmtRub2(k.fot)}</td>
-                      <td style={{ padding: "11px 14px", fontSize: 13, color: "#555", textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{k.plan}</td>
-                      <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: "#222", textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{k.fact}</td>
-                      <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: pc, textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{k.pct}%</td>
-                      <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500, color: "#333", textAlign: "right", borderBottom: isLast ? "none" : "1px solid #f5f5f5" }}>{fmtRub2(k.fact_premii)}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "var(--ink)", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{k.name}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--muted)", textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{k.weight}%</td>
+                      <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--muted)", textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{fmtRub2(k.fot)}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, color: "var(--ink-2)", textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{k.plan}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 600, color: "var(--ink)", textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{k.fact}</td>
+                      <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: pc, textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{k.pct}%</td>
+                      <td style={{ padding: "11px 14px", fontSize: 13, fontWeight: 500, color: "var(--ink)", textAlign: "right", borderBottom: isLast ? "none" : "1px solid var(--border)" }}>{fmtRub2(k.fact_premii)}</td>
                     </tr>
                   );
                 })}
               </tbody>
-              <tfoot style={{ background: "#f9f9ff" }}>
+              <tfoot style={{ background: "var(--brand-soft)" }}>
                 <tr>
-                  <td colSpan={6} style={{ padding: "11px 14px", fontSize: 13, fontWeight: 700, color: "#6366f1" }}>Итого премия факт</td>
-                  <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: "#6366f1", textAlign: "right" }}>{fmtRub2(data.totals.fact_premii)}</td>
+                  <td colSpan={6} style={{ padding: "11px 14px", fontSize: 13, fontWeight: 700, color: "var(--brand)" }}>Итого премия факт</td>
+                  <td style={{ padding: "11px 14px", fontSize: 14, fontWeight: 700, color: "var(--brand)", textAlign: "right" }}>{fmtRub2(data.totals.fact_premii)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -3589,12 +3620,12 @@ function HRSalaryView() {
 
           {/* SMART-задачи */}
           {data.smart_tasks.length > 0 && (
-            <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "18px 22px" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 22px" }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>SMART-задачи · {month}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {data.smart_tasks.map((t: string, i: number) => (
-                  <div key={i} style={{ display: "flex", gap: 12, fontSize: 13, color: "#444", lineHeight: 1.55, alignItems: "flex-start" }}>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: 11, fontWeight: 700, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                  <div key={i} style={{ display: "flex", gap: 12, fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--brand)", color: "var(--surface)", fontSize: 11, fontWeight: 700, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
                     <span>{t.replace(/^\d+\.\s*/, "")}</span>
                   </div>
                 ))}
@@ -3635,7 +3666,7 @@ function PlaceholderSection({ label, subtitle }: { label: string; subtitle?: str
         justifyContent: "center",
         gap: 8,
       }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#8a6a64", fontFamily: "system-ui, sans-serif", letterSpacing: "0.02em" }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: "var(--muted)", fontFamily: "system-ui, sans-serif", letterSpacing: "0.02em" }}>
           {label}
         </div>
         <div style={{ fontSize: 16, fontWeight: 500, color: "#9e7a74", fontFamily: "system-ui, sans-serif" }}>
@@ -3675,7 +3706,7 @@ function FinancePlaceholder() {
         justifyContent: "center",
         gap: 8,
       }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#8a6a64", fontFamily: "system-ui, sans-serif", letterSpacing: "0.02em" }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: "var(--muted)", fontFamily: "system-ui, sans-serif", letterSpacing: "0.02em" }}>
           Финансы
         </div>
         <div style={{ fontSize: 16, fontWeight: 500, color: "#9e7a74", fontFamily: "system-ui, sans-serif" }}>
@@ -3688,7 +3719,7 @@ function FinancePlaceholder() {
 
 // ── Finance Section (ДДС) ────────────────────────────────────────────────────
 function FinanceSection() {
-  const MUTED = "#9a7d76";
+  const MUTED = "var(--muted)";
   const ACCENT = "#1A6B52";
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -3705,7 +3736,7 @@ function FinanceSection() {
   const money = (n: number) => (n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
   const cell = (n: number, i: number) => (
     <td key={i} style={{ textAlign: "right", padding: "4px 8px",
-      color: n < 0 ? "#c0392b" : "#111", whiteSpace: "nowrap",
+      color: n < 0 ? "var(--danger-ink)" : "var(--ink)", whiteSpace: "nowrap",
       background: i === curMonthIdx ? "#f3f8f6" : "none" }}>{n ? money(n) : "—"}</td>
   );
   const headMonth = (m: string, i: number) => (
@@ -3724,7 +3755,7 @@ function FinanceSection() {
         {totalByMonth.map((v: number, i: number) => (
           <div key={i} style={{ flex: 1, textAlign: "center" }}>
             <div title={money(v)} style={{ height: Math.max(2, (v / maxTotal) * 100),
-              background: i === curMonthIdx ? ACCENT : "#cfe0d9", borderRadius: 3 }} />
+              background: i === curMonthIdx ? ACCENT : "var(--success-border)", borderRadius: 3 }} />
             <div style={{ fontSize: 10, color: MUTED, marginTop: 4 }}>{data.months[i].slice(0, 3)}</div>
           </div>
         ))}
@@ -3745,7 +3776,7 @@ function FinanceSection() {
           ))}
           {data.activities.map((act: any) => (
             <React.Fragment key={act.name}>
-              <tr style={{ fontWeight: 700, background: "#eef5f2" }}>
+              <tr style={{ fontWeight: 700, background: "var(--surface-2)" }}>
                 <td style={{ padding: "6px 8px" }}>{act.name}</td>
                 {act.net.map((n: number, i: number) => cell(n, i))}</tr>
               {act.items.map((it: any) => (
@@ -3774,9 +3805,9 @@ function FinanceSection() {
 
 // ── Expenses Section (Расходы компании — ОПиУ) ───────────────────────────────
 function ExpensesSection() {
-  const MUTED = "#9a7d76";
+  const MUTED = "var(--muted)";
   const ACCENT = "#1A6B52";
-  const RED = "#c0392b";
+  const RED = "var(--danger-ink)";
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [mSel, setMSel] = React.useState<number | null>(null);
@@ -3826,7 +3857,7 @@ function ExpensesSection() {
   const DY_H = 200, DY_W = 900, dyCol = DY_W / dynIdx.length;
   const rentMax = Math.max(10, ...dynIdx.map(j => rent(f, j)));
 
-  const card: React.CSSProperties = { background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "16px 20px" };
+  const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" };
   const h3: React.CSSProperties = { fontSize: 15, fontWeight: 700, margin: "28px 0 10px" };
   const dev = (fact: number, plan: number, moreIsGood: boolean) => {
     if (!plan) return null;
@@ -3849,8 +3880,8 @@ function ExpensesSection() {
           const active = j === i;
           return (
             <button key={m} disabled={!has} onClick={() => setMSel(j)}
-              style={{ background: active ? ACCENT : "#fff", color: active ? "#fff" : has ? "#444" : "#ccc",
-                border: "1px solid " + (active ? ACCENT : "#e0e0e0"), borderRadius: 20, padding: "4px 12px",
+              style={{ background: active ? ACCENT : "var(--surface)", color: active ? "var(--surface)" : has ? "var(--ink-2)" : "var(--faint)",
+                border: "1px solid " + (active ? ACCENT : "var(--border-strong)"), borderRadius: 20, padding: "4px 12px",
                 fontSize: 12, cursor: has ? "pointer" : "default", fontFamily: "inherit" }}>{m}</button>
           );
         })}
@@ -3860,7 +3891,7 @@ function ExpensesSection() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {kpis.map(k => (
           <div key={k.label} style={card}>
-            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.5px" }}>
               {k.isPct ? pct1(k.fact) : money(k.fact)}
             </div>
@@ -3897,7 +3928,7 @@ function ExpensesSection() {
               <g key={s.label}>
                 <rect x={x} y={y} width={w} height={hh} rx={4} fill={fill} />
                 <text x={x + w / 2} y={y - 5} textAnchor="middle" fontSize={11} fontWeight={600}
-                  fill={isFirst || isLast ? ACCENT : "#8a6a64"}>
+                  fill={isFirst || isLast ? ACCENT : "var(--muted)"}>
                   {isFirst || isLast ? mln(h) : (s.delta > 0 ? "+" : "−") + mln(Math.abs(s.delta))}
                 </text>
                 <text x={x + w / 2} y={WF_TOP + WF_H + 16} textAnchor="middle" fontSize={10.5} fill={MUTED}>{s.label}</text>
@@ -3923,7 +3954,7 @@ function ExpensesSection() {
         return (
           <div key={g.key} style={{ ...card, padding: 0, marginBottom: 12, overflow: "hidden" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
-              padding: "12px 20px", background: "#eef5f2", flexWrap: "wrap", gap: 6 }}>
+              padding: "12px 20px", background: "var(--surface-2)", flexWrap: "wrap", gap: 6 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{g.name}</div>
               <div style={{ fontSize: 13 }}>
                 <b>{money(gf)}</b>
@@ -3948,7 +3979,7 @@ function ExpensesSection() {
                   const over = it.plan > 0 && it.fact > it.plan * 1.15;
                   const diff = it.fact - it.plan;
                   return (
-                    <tr key={it.label} style={{ borderTop: "1px solid #f5f5f5", background: over ? "#fdf3f1" : "none" }}>
+                    <tr key={it.label} style={{ borderTop: "1px solid var(--border)", background: over ? "#fdf3f1" : "none" }}>
                       <td style={{ padding: "6px 20px" }}>{it.label}</td>
                       <td style={{ textAlign: "right", padding: "6px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>{money(it.fact)}</td>
                       <td style={{ textAlign: "right", padding: "6px 8px", color: MUTED }}>{pct1(f.revenue[i] ? it.fact / f.revenue[i] * 100 : 0)}</td>
@@ -3997,8 +4028,8 @@ function ExpensesSection() {
       {/* Фонды */}
       <h3 style={h3}>Прибыль с начала года и фонды</h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <div style={{ ...card, background: "#eef5f2", border: "1px solid #d5e6df" }}>
-          <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>ЧП накопленным итогом</div>
+        <div style={{ ...card, background: "var(--surface-2)", border: "1px solid #d5e6df" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>ЧП накопленным итогом</div>
           <div style={{ fontSize: 24, fontWeight: 700, color: ACCENT, letterSpacing: "-0.5px" }}>{money(f.netProfitCum[last])}</div>
           <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>январь — {data.months[last].toLowerCase()}</div>
         </div>
@@ -4008,7 +4039,7 @@ function ExpensesSection() {
           { label: "Ф: Корпоративы 5%", arr: f.funds.corporate },
         ].map(fd => (
           <div key={fd.label} style={card}>
-            <div style={{ fontSize: 11, color: "#999", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{fd.label}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>{fd.label}</div>
             <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.5px" }}>{money(fd.arr.reduce((s: number, v: number) => s + v, 0))}</div>
             <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>начислено за год</div>
           </div>
@@ -4019,7 +4050,7 @@ function ExpensesSection() {
 }
 
 // ── Motivation Section (Мотивация) ───────────────────────────────────────────
-const MOTIV_MUTED = "#9a7d76";
+const MOTIV_MUTED = "var(--muted)";
 const MOTIV_ACCENT = "#1A6B52";
 const money0 = (n: number) => (n || 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 
@@ -4105,7 +4136,7 @@ function MotivBars({ title, values }: { title: string; values: number[] }) {
               {v ? (v >= 1_000_000 ? (v / 1_000_000).toFixed(1) + "м" : Math.round(v / 1000) + "т") : ""}
             </div>
             <div title={money0(v)} style={{ height: Math.max(2, (v / max) * 90),
-              background: i === curIdx ? MOTIV_ACCENT : "#cfe0d9", borderRadius: 3 }} />
+              background: i === curIdx ? MOTIV_ACCENT : "var(--success-border)", borderRadius: 3 }} />
             <div style={{ fontSize: 10, color: i === curIdx ? MOTIV_ACCENT : MOTIV_MUTED,
               fontWeight: i === curIdx ? 700 : 400, marginTop: 4 }}>{MONTHS_RU[i].slice(0, 3)}</div>
           </div>
@@ -4233,7 +4264,7 @@ function MotivRole({ roleKey }: { roleKey: string }) {
           <tbody>
             {role.months.map((m: any) => (
               <tr key={m.month} style={{ fontWeight: m.month === cur ? 700 : 400,
-                background: m.month === cur ? "#eef5f2" : "none" }}>
+                background: m.month === cur ? "var(--surface-2)" : "none" }}>
                 <td style={{ padding: 4 }}>{m.month}</td>
                 {["fix", "openPlan", "openFact", "openPct", "openBonus", "closePlan", "closeFact", "closePct", "closeBonus", "total"]
                   .map(f => (
@@ -4281,7 +4312,7 @@ function MotivOwners() {
             <div key={i} style={{ flex: 1, textAlign: "center" }}>
               <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 84 }}>
                 <div title={`план ${money0(d.netProfit.plan[i])}`}
-                  style={{ flex: 1, height: Math.max(2, (d.netProfit.plan[i] / maxNp) * 80), background: "#cfe0d9", borderRadius: 2 }} />
+                  style={{ flex: 1, height: Math.max(2, (d.netProfit.plan[i] / maxNp) * 80), background: "var(--success-border)", borderRadius: 2 }} />
                 <div title={`факт ${money0(d.netProfit.fact[i])}`}
                   style={{ flex: 1, height: Math.max(2, (d.netProfit.fact[i] / maxNp) * 80),
                     background: i === curIdx ? MOTIV_ACCENT : "#7fae9c", borderRadius: 2 }} />
@@ -4304,7 +4335,7 @@ function MotivOwners() {
               <tr key={label}><td style={{ padding: 4, whiteSpace: "nowrap" }}>{label}</td>
                 {arr.map((n, i) => (
                   <td key={i} style={{ textAlign: "right", padding: 4,
-                    color: n < 0 ? "#c0392b" : "#111", whiteSpace: "nowrap" }}>{n ? money0(n) : "—"}</td>))}</tr>
+                    color: n < 0 ? "var(--danger-ink)" : "var(--ink)", whiteSpace: "nowrap" }}>{n ? money0(n) : "—"}</td>))}</tr>
             ))}
           </tbody>
         </table>
@@ -4462,18 +4493,18 @@ function NewDirectionModal({ onSave, onClose }: { onSave: (d: Direction) => void
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 24, minWidth: 320, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
+      <div style={{ background: "var(--surface)", borderRadius: 14, padding: 24, minWidth: 320, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
         onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Новый раздел</div>
         <input ref={ref} value={label} onChange={e => setLabel(e.target.value)}
           placeholder="Название раздела"
           onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") onClose(); }}
-          style={{ width: "100%", border: "1px solid #e0e0e0", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-        <div style={{ marginTop: 14, marginBottom: 4, fontSize: 12, color: "#888" }}>Цвет раздела</div>
+          style={{ width: "100%", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+        <div style={{ marginTop: 14, marginBottom: 4, fontSize: 12, color: "var(--muted)" }}>Цвет раздела</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           {PRESET_COLORS.map(c => (
             <div key={c} onClick={() => setColor(c)}
-              style={{ width: 26, height: 26, borderRadius: "50%", background: c, cursor: "pointer", border: color === c ? "3px solid #111" : "2px solid transparent", boxSizing: "border-box" }} />
+              style={{ width: 26, height: 26, borderRadius: "50%", background: c, cursor: "pointer", border: color === c ? "3px solid var(--ink)" : "2px solid transparent", boxSizing: "border-box" }} />
           ))}
           <input type="color" value={color} onChange={e => setColor(e.target.value)}
             style={{ width: 26, height: 26, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", background: "none" }} />
@@ -4485,11 +4516,11 @@ function NewDirectionModal({ onSave, onClose }: { onSave: (d: Direction) => void
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={save} disabled={!label.trim() || saving}
-            style={{ flex: 1, background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ flex: 1, background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             {saving ? "Создание…" : "Создать раздел"}
           </button>
           <button onClick={onClose}
-            style={{ background: "none", color: "#999", border: "1px solid #e0e0e0", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ background: "none", color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             Отмена
           </button>
         </div>
@@ -4510,10 +4541,10 @@ function RecurringDeleteModal({ taskTitle, onSelect, onClose }: {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={onClose}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 24, minWidth: 320, maxWidth: 380, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
+      <div style={{ background: "var(--surface)", borderRadius: 14, padding: 24, minWidth: 320, maxWidth: 380, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
         onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Удалить повторяющееся событие</div>
-        <div style={{ fontSize: 12, color: "#999", marginBottom: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{taskTitle}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{taskTitle}</div>
         {(["this", "following", "all"] as RecurringDeleteOption[]).map(opt => {
           const labels: Record<RecurringDeleteOption, string> = {
             this: "Только это событие",
@@ -4521,20 +4552,20 @@ function RecurringDeleteModal({ taskTitle, onSelect, onClose }: {
             all: "Все события",
           };
           return (
-            <label key={opt} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, cursor: "pointer", background: selected === opt ? "#f5f5f5" : "transparent", marginBottom: 4 }}>
+            <label key={opt} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, cursor: "pointer", background: selected === opt ? "var(--border)" : "transparent", marginBottom: 4 }}>
               <input type="radio" name="recurringDelete" checked={selected === opt} onChange={() => setSelected(opt)}
-                style={{ accentColor: "#111", width: 16, height: 16 }} />
+                style={{ accentColor: "var(--ink)", width: 16, height: 16 }} />
               <span style={{ fontSize: 14 }}>{labels[opt]}</span>
             </label>
           );
         })}
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <button onClick={() => onSelect(selected)}
-            style={{ flex: 1, background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ flex: 1, background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, padding: "9px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             Удалить
           </button>
           <button onClick={onClose}
-            style={{ background: "none", color: "#999", border: "1px solid #e0e0e0", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ background: "none", color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             Отмена
           </button>
         </div>
@@ -4572,9 +4603,9 @@ function MaterialViewer({ material, sectionTitle, onBack }: { material: LMateria
       <button onClick={onBack} style={{ marginBottom: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, display: "flex", alignItems: "center", gap: 6, padding: 0, fontFamily: "inherit" }}>
         ← {sectionTitle}
       </button>
-      <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 16, padding: 32 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 32 }}>
         <div style={{ marginBottom: 4, fontSize: 11, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px" }}>{TYPE_LABELS[material.type]}</div>
-        <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 600, color: "#111" }}>{material.title}</h2>
+        <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 600, color: "var(--ink)" }}>{material.title}</h2>
         {loading && <div style={{ textAlign: "center", padding: "48px 0", color: "#9ca3af", fontSize: 14 }}>Загрузка...</div>}
         {!loading && material.type === "presentation" && material.content_url && (
           <button
@@ -4587,13 +4618,13 @@ function MaterialViewer({ material, sectionTitle, onBack }: { material: LMateria
                 window.open(material.content_url!, "_blank");
               }
             }}
-            style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#1A6B52", color: "#fff", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#1A6B52", color: "var(--surface)", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}>
             📄 Открыть презентацию
           </button>
         )}
         {!loading && material.type === "video" && material.content_url && (
           <a href={material.content_url} target="_blank" rel="noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#1A6B52", color: "#fff", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 500, textDecoration: "none", fontFamily: "inherit" }}>
+            style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#1A6B52", color: "var(--surface)", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 500, textDecoration: "none", fontFamily: "inherit" }}>
             ▶ Смотреть видео
           </a>
         )}
@@ -4622,7 +4653,7 @@ const SECTION_COLORS: Record<string, string> = {
   "Маркетинг": "#2563eb",
   "Управление командой": "#d97706",
   "Продукт": "#7c3aed",
-  "Юридическая база": "#e53e3e",
+  "Юридическая база": "var(--danger)",
 };
 const SECTION_ICONS: Record<string, string> = {
   "Продажи": "↗", "Маркетинг": "◎", "Управление командой": "👥", "Продукт": "⌂", "Юридическая база": "⚖",
@@ -4700,16 +4731,16 @@ function LearningPanel() {
         <button onClick={() => { setActiveSection(null); setMaterials([]); }} style={{ marginBottom: 20, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, display: "flex", alignItems: "center", gap: 6, padding: 0, fontFamily: "inherit" }}>
           ← Все разделы
         </button>
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 16, padding: 32 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 32 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 24 }}>{SECTION_ICONS[activeSection.title] || "📄"}</span>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "#111" }}>{activeSection.title}</h2>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--ink)" }}>{activeSection.title}</h2>
                 {activeSection.description && <p style={{ margin: "2px 0 0", color: "#6b7280", fontSize: 13 }}>{activeSection.description}</p>}
               </div>
             </div>
-            <button onClick={() => setShowAddMaterial(true)} style={{ background: color, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+            <button onClick={() => setShowAddMaterial(true)} style={{ background: color, color: "var(--surface)", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
               + Добавить материал
             </button>
           </div>
@@ -4718,20 +4749,20 @@ function LearningPanel() {
             <div style={{ background: "#f8f8f8", borderRadius: 12, padding: 20, marginBottom: 24 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <input value={newMatTitle} onChange={e => setNewMatTitle(e.target.value)} placeholder="Название материала"
-                  style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
+                  style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
                 <select value={newMatType} onChange={e => setNewMatType(e.target.value)}
-                  style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontFamily: "inherit", background: "#fff" }}>
+                  style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 13, fontFamily: "inherit", background: "var(--surface)" }}>
                   <option value="presentation">Презентация</option>
                   <option value="video">Видео</option>
                   <option value="article">Статья</option>
                 </select>
                 <input value={newMatUrl} onChange={e => setNewMatUrl(e.target.value)} placeholder="Ссылка на файл (Google Slides, YouTube, и т.д.)"
-                  style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
+                  style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={addMaterial} disabled={saving} style={{ background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  <button onClick={addMaterial} disabled={saving} style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                     {saving ? "Сохранение..." : "Сохранить"}
                   </button>
-                  <button onClick={() => setShowAddMaterial(false)} style={{ background: "none", color: "#999", border: "1px solid #e0e0e0", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  <button onClick={() => setShowAddMaterial(false)} style={{ background: "none", color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                     Отмена
                   </button>
                 </div>
@@ -4747,12 +4778,12 @@ function LearningPanel() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {materials.map(m => (
                 <button key={m.id} onClick={() => setActiveMaterial(m)}
-                  style={{ display: "flex", alignItems: "center", gap: 14, background: "none", border: "1px solid #ebebeb", borderRadius: 10, padding: "12px 16px", cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "border-color 0.15s" }}
+                  style={{ display: "flex", alignItems: "center", gap: 14, background: "none", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px", cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "border-color 0.15s" }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = color)}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = "#ebebeb")}>
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}>
                   <span style={{ fontSize: 16 }}>{m.type === "video" ? "▶" : m.type === "article" ? "📄" : m.type === "test" ? "✓" : "📊"}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: "#111" }}>{m.title}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{m.title}</div>
                     <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{TYPE_LABELS[m.type]}</div>
                   </div>
                 </button>
@@ -4768,10 +4799,10 @@ function LearningPanel() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#111" }}>Обучение</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--ink)" }}>Обучение</h2>
           <p style={{ margin: "4px 0 0", color: "#6b7280", fontSize: 13 }}>Учебные материалы для команды</p>
         </div>
-        <button onClick={() => setShowAddSection(true)} style={{ background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+        <button onClick={() => setShowAddSection(true)} style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           + Раздел
         </button>
       </div>
@@ -4780,14 +4811,14 @@ function LearningPanel() {
         <div style={{ background: "#f8f8f8", borderRadius: 12, padding: 20, marginBottom: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <input value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} placeholder="Название раздела"
-              style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
+              style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
             <input value={newSectionDesc} onChange={e => setNewSectionDesc(e.target.value)} placeholder="Описание (необязательно)"
-              style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
+              style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }} />
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={addSection} disabled={saving} style={{ background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              <button onClick={addSection} disabled={saving} style={{ background: "var(--ink)", color: "var(--surface)", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 {saving ? "Сохранение..." : "Создать"}
               </button>
-              <button onClick={() => setShowAddSection(false)} style={{ background: "none", color: "#999", border: "1px solid #e0e0e0", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              <button onClick={() => setShowAddSection(false)} style={{ background: "none", color: "var(--muted)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 Отмена
               </button>
             </div>
@@ -4807,18 +4838,18 @@ function LearningPanel() {
             const count = counts[section.id] || 0;
             return (
               <button key={section.id} onClick={() => setActiveSection(section)}
-                style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 14, padding: "20px 20px 18px", textAlign: "left", cursor: "pointer", transition: "border-color 0.15s", fontFamily: "inherit" }}
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "20px 20px 18px", textAlign: "left", cursor: "pointer", transition: "border-color 0.15s", fontFamily: "inherit" }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = color)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "#ebebeb")}>
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <span style={{ fontSize: 20 }}>{icon}</span>
-                  <span style={{ fontSize: 11, color: "#9ca3af", background: "#f5f5f5", borderRadius: 6, padding: "2px 8px" }}>
+                  <span style={{ fontSize: 11, color: "#9ca3af", background: "var(--border)", borderRadius: 6, padding: "2px 8px" }}>
                     {count} {count === 1 ? "материал" : count >= 2 && count <= 4 ? "материала" : "материалов"}
                   </span>
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#111", marginBottom: 4 }}>{section.title}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink)", marginBottom: 4 }}>{section.title}</div>
                 {section.description && <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>{section.description}</div>}
-                <div style={{ marginTop: 14, height: 3, background: "#f0f0f0", borderRadius: 2 }}>
+                <div style={{ marginTop: 14, height: 3, background: "var(--border)", borderRadius: 2 }}>
                   <div style={{ height: "100%", width: count > 0 ? "30%" : "0%", background: color, borderRadius: 2, transition: "width 0.3s" }} />
                 </div>
               </button>
@@ -4831,8 +4862,8 @@ function LearningPanel() {
 }
 
 const DEAL_SELECT_STYLE: React.CSSProperties = {
-  padding: "5px 10px", borderRadius: 7, border: "1px solid #e0e0e0",
-  fontSize: 12, fontFamily: "inherit", background: "#fff", color: "#333",
+  padding: "6px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-strong)",
+  fontSize: 12, fontFamily: "inherit", background: "var(--surface)", color: "var(--ink)",
   cursor: "pointer", outline: "none", minWidth: 130,
 };
 
@@ -4929,11 +4960,12 @@ function DealsSection() {
         <div style={{ display: "flex", gap: 6 }}>
           {(["stuck", "all"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+              padding: "5px 14px", borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 500,
               cursor: "pointer", fontFamily: "inherit", border: "1px solid",
-              borderColor: tab === t ? "#111" : "#e0e0e0",
-              background: tab === t ? "#111" : "#fff",
-              color: tab === t ? "#fff" : "#666",
+              borderColor: tab === t ? "var(--ink)" : "var(--border-strong)",
+              background: tab === t ? "var(--ink)" : "var(--surface)",
+              color: tab === t ? "var(--surface)" : "var(--ink-2)",
+              transition: "background var(--dur) var(--ease-out)",
             }}>
               {t === "stuck" ? "Зависшие" : "Все сделки"}
             </button>
@@ -4964,13 +4996,13 @@ function DealsSection() {
           </select>
           <button
             onClick={() => { setSelectedCategory(""); setSelectedStage(""); }}
-            style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+            style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
           >
             сбросить
           </button>
           <button
             onClick={() => setRefreshKey(k => k + 1)}
-            style={{ fontSize: 11, color: "#bbb", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+            style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
           >
             ↻ обновить
           </button>
@@ -4979,20 +5011,25 @@ function DealsSection() {
 
       {/* Deals list */}
       {(loading || metaLoading) ? (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 28, textAlign: "center", color: "#bbb", fontSize: 13, marginBottom: 32 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", color: "var(--muted)", fontSize: 13, marginBottom: 32 }}>
           Загрузка из Bitrix…
         </div>
       ) : error ? (
-        <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 24, textAlign: "center", fontSize: 13, marginBottom: 32 }}>
-          <div style={{ color: "#e53e3e", marginBottom: 8 }}>{error}</div>
-          <button onClick={() => setRefreshKey(k => k + 1)} style={{ fontSize: 12, color: "#999", background: "none", border: "1px solid #e0e0e0", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", fontSize: 13, marginBottom: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: "var(--r-pill)", background: "var(--danger-soft)", color: "var(--danger)" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+          </span>
+          <div style={{ color: "var(--ink)", fontWeight: 500 }}>{error}</div>
+          <button onClick={() => setRefreshKey(k => k + 1)} style={{ fontSize: 12, color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", transition: "background var(--dur) var(--ease-out)" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; }}>
             Попробовать снова
           </button>
         </div>
       ) : (
         <div style={{ marginBottom: 32 }}>
           {activeDeals.length === 0 && firedDeals.length === 0 && (
-            <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: 28, textAlign: "center", color: "#bbb", fontSize: 13 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
               {tab === "stuck" ? "Зависших сделок нет" : "Сделок не найдено"}
             </div>
           )}
@@ -5002,11 +5039,11 @@ function DealsSection() {
             ))}
           </div>
           {firedDeals.length > 0 && (
-            <div style={{ background: "#fff", border: "1px solid #fdd", borderRadius: 12, overflow: "hidden", marginTop: 6 }}>
-              <div style={{ padding: "13px 20px", background: "#fff5f5", borderBottom: "1px solid #fdd", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#c53030", flex: 1 }}>Сделки уволенных сотрудников</span>
-                <span style={{ fontSize: 11, color: "#e53e3e", background: "#fed7d7", borderRadius: 10, padding: "2px 8px" }}>{firedDeals.length}</span>
-                <span style={{ fontSize: 12, color: "#fc8181" }}>требуют переназначения</span>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-md)", overflow: "hidden", marginTop: 6 }}>
+              <div style={{ padding: "13px 20px", background: "var(--danger-soft)", borderBottom: "1px solid var(--danger-border)", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--danger-ink)", flex: 1 }}>Сделки уволенных сотрудников</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--danger-ink)", background: "var(--danger-border)", borderRadius: "var(--r-pill)", padding: "2px 8px" }}>{firedDeals.length}</span>
+                <span style={{ fontSize: 12, color: "var(--danger)" }}>требуют переназначения</span>
               </div>
               {firedDeals.map((d, i) => <DealRow key={d.url} d={d} last={i === firedDeals.length - 1} />)}
             </div>
@@ -5022,6 +5059,9 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("deals");
+  const [navEdit, setNavEdit] = useState(false);
+  const [navOrder, setNavOrder] = useState<string[]>(NAV_ITEMS.map(i => i.key));
+  const [navHidden, setNavHidden] = useState<string[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const [addingGlobal, setAddingGlobal] = useState(false);
   const [archiveKey, setArchiveKey] = useState(0);
@@ -5050,6 +5090,42 @@ export default function Dashboard() {
   };
 
   useEffect(() => { fetchTasks(); fetchDirections(); }, []);
+
+  // Персональная настройка меню (порядок + скрытые разделы) — хранится в браузере
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("oazis_nav_v1") || "{}");
+      const allKeys = NAV_ITEMS.map(i => i.key);
+      const savedOrder: string[] = Array.isArray(saved.order) ? saved.order.filter((k: string) => allKeys.includes(k)) : [];
+      setNavOrder([...savedOrder, ...allKeys.filter(k => !savedOrder.includes(k))]);
+      setNavHidden(Array.isArray(saved.hidden) ? saved.hidden.filter((k: string) => allKeys.includes(k)) : []);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("oazis_nav_v1", JSON.stringify({ order: navOrder, hidden: navHidden }));
+  }, [navOrder, navHidden]);
+
+  const moveNav = (key: string, dir: number) => {
+    setNavOrder(prev => {
+      const arr = [...prev];
+      const i = arr.indexOf(key);
+      if (i < 0) return prev;
+      let j = i + dir;
+      while (j >= 0 && j < arr.length && navHidden.includes(arr[j])) j += dir;
+      if (j < 0 || j >= arr.length) return prev;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return arr;
+    });
+  };
+  const hideNav = (key: string, label: string) => {
+    if (!confirm(`Вы точно хотите удалить раздел «${label}»?`)) return;
+    setNavHidden(prev => (prev.includes(key) ? prev : [...prev, key]));
+    if (activeTab === key) {
+      const nextKey = navOrder.find(k => k !== key && !navHidden.includes(k));
+      if (nextKey) setActiveTab(nextKey);
+    }
+  };
+  const restoreNav = () => setNavHidden([]);
 
   // Optimistic updates — no page scroll
   const markDone = (id: number) => {
@@ -5161,48 +5237,75 @@ export default function Dashboard() {
   const sortedDirections = dirOrder().filter(d => groupedTasks[d]);
 
   const overdue = tasks.filter(t => t.deadline && t.deadline < today).length;
+
+  const orderedNav = navOrder.map(k => NAV_ITEMS.find(i => i.key === k)).filter(Boolean) as typeof NAV_ITEMS;
+  const visibleNav = orderedNav.filter(i => !navHidden.includes(i.key));
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--font-inter), -apple-system, sans-serif", color: "var(--ink)", display: "flex" }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{ width: 220, minHeight: "100vh", background: "#fff", borderRight: "1px solid #ebebeb", display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
+      <aside style={{ width: 220, minHeight: "100vh", background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
         {/* Logo */}
-        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #f0f0f0" }}>
+        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src="/logo.svg" alt="Oazis Estate" style={{ width: 32, height: 32, filter: "invert(27%) sepia(51%) saturate(500%) hue-rotate(115deg) brightness(85%)" }} />
-            <div style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.3px" }}>Oazis Estate</div>
+            <div style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.3px", color: "var(--ink)" }}>Oazis Estate</div>
           </div>
         </div>
 
         {/* Nav */}
         <nav style={{ padding: "12px 8px", flex: 1 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.8px", padding: "4px 12px 8px" }}>Кабинет</div>
-          {NAV_ITEMS.map(item => {
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 12px 8px" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.8px" }}>Кабинет</span>
+            <button onClick={() => setNavEdit(v => !v)} title="Настроить меню"
+              style={{ background: "none", border: "none", cursor: "pointer", color: navEdit ? "var(--brand)" : "var(--muted)", fontSize: 11, fontWeight: 600, fontFamily: "inherit", padding: 0 }}>
+              {navEdit ? "Готово" : "Настроить"}
+            </button>
+          </div>
+          {visibleNav.map((item, idx) => {
             const active = activeTab === item.key;
             return (
-              <button key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer",
-                  background: active ? "#f0f0ff" : "none", fontFamily: "inherit",
-                  color: active ? "#5b4ff5" : "#555",
-                  fontWeight: active ? 600 : 400, fontSize: 13, textAlign: "left", marginBottom: 2,
-                  transition: "background 0.1s",
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#f8f8f8"; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = "none"; }}
-              >
-                <span style={{ fontSize: 14, width: 18, textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-              </button>
+              <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
+                <button
+                  onClick={() => { if (!navEdit) setActiveTab(item.key); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0,
+                    padding: "8px 12px", borderRadius: "var(--r-sm)", border: "none", cursor: navEdit ? "default" : "pointer",
+                    background: active ? "var(--brand-soft)" : "transparent", fontFamily: "inherit",
+                    color: active ? "var(--brand-ink)" : "var(--ink-2)",
+                    fontWeight: active ? 600 : 500, fontSize: 13, textAlign: "left",
+                    transition: "background var(--dur) var(--ease-out), color var(--dur) var(--ease-out)",
+                  }}
+                  onMouseEnter={e => { if (!active && !navEdit) e.currentTarget.style.background = "var(--surface-2)"; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <span style={{ width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: active ? "var(--brand)" : "var(--muted)" }}><NavIcon k={item.key} /></span>
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                </button>
+                {navEdit && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, paddingRight: 4 }}>
+                    <button title="Вверх" onClick={() => moveNav(item.key, -1)} disabled={idx === 0}
+                      style={{ background: "none", border: "none", cursor: idx === 0 ? "default" : "pointer", color: idx === 0 ? "var(--faint)" : "var(--muted)", fontSize: 13, lineHeight: 1, padding: "2px 3px", fontFamily: "inherit" }}>↑</button>
+                    <button title="Вниз" onClick={() => moveNav(item.key, 1)} disabled={idx === visibleNav.length - 1}
+                      style={{ background: "none", border: "none", cursor: idx === visibleNav.length - 1 ? "default" : "pointer", color: idx === visibleNav.length - 1 ? "var(--faint)" : "var(--muted)", fontSize: 13, lineHeight: 1, padding: "2px 3px", fontFamily: "inherit" }}>↓</button>
+                    <button title="Удалить раздел" onClick={() => hideNav(item.key, item.label)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 15, lineHeight: 1, padding: "2px 4px", fontFamily: "inherit" }}>×</button>
+                  </span>
+                )}
+              </div>
             );
           })}
+          {navEdit && navHidden.length > 0 && (
+            <button onClick={restoreNav}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", marginTop: 8, padding: "8px 12px", borderRadius: "var(--r-sm)", border: "1px dashed var(--border-strong)", background: "transparent", cursor: "pointer", color: "var(--ink-2)", fontSize: 12.5, fontFamily: "inherit" }}>
+              ↩ Вернуть скрытые ({navHidden.length})
+            </button>
+          )}
         </nav>
 
         {/* Bottom date */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #f0f0f0" }}>
-          <div style={{ fontSize: 11, color: "#bbb" }}>{dateLabel}</div>
+        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>{dateLabel}</div>
         </div>
       </aside>
 
@@ -5214,21 +5317,9 @@ export default function Dashboard() {
           <>
             {/* Риск-баннер */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 32 }}>
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
-                <div style={{ fontSize: 12, color: "#999", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Под риском</div>
-                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px", color: "#111" }}>—</div>
-                <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>комиссий без движения</div>
-              </div>
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
-                <div style={{ fontSize: 12, color: "#999", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Зависших сделок</div>
-                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px" }}>—</div>
-                <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>требуют внимания</div>
-              </div>
-              <div style={{ background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "20px 24px" }}>
-                <div style={{ fontSize: 12, color: "#999", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Задач просрочено</div>
-                <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-1px", color: overdue > 0 ? "#e53e3e" : "#111" }}>{overdue}</div>
-                <div style={{ fontSize: 12, color: "#bbb", marginTop: 4 }}>из {tasks.length} активных</div>
-              </div>
+              <StatCard label="Под риском" value="—" hint="комиссий без движения" />
+              <StatCard label="Зависших сделок" value="—" hint="требуют внимания" />
+              <StatCard label="Задач просрочено" value={overdue} hint={`из ${tasks.length} активных`} tone={overdue > 0 ? "danger" : "default"} />
             </div>
 
             {/* Зависшие / Все сделки */}
@@ -5238,22 +5329,27 @@ export default function Dashboard() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setShowArchive(false)}
-                  style={{ background: !showArchive ? "#111" : "#fff", color: !showArchive ? "#fff" : "#666", border: "1px solid " + (!showArchive ? "#111" : "#e0e0e0"), borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ background: !showArchive ? "var(--ink)" : "var(--surface)", color: !showArchive ? "var(--surface)" : "var(--ink-2)", border: "1px solid " + (!showArchive ? "var(--ink)" : "var(--border-strong)"), borderRadius: "var(--r-pill)", padding: "5px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "background var(--dur) var(--ease-out)" }}>
                   Неделя
                 </button>
                 <button onClick={() => setShowArchive(true)}
-                  style={{ background: showArchive ? "#555" : "#fff", color: showArchive ? "#fff" : "#888", border: "1px solid " + (showArchive ? "#555" : "#e0e0e0"), borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
-                  📁 Архив
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: showArchive ? "var(--ink)" : "var(--surface)", color: showArchive ? "var(--surface)" : "var(--ink-2)", border: "1px solid " + (showArchive ? "var(--ink)" : "var(--border-strong)"), borderRadius: "var(--r-pill)", padding: "5px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "background var(--dur) var(--ease-out)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><path d="M10 12h4" /></svg>
+                  Архив
                 </button>
               </div>
               {!showArchive && (
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => setShowNewDirection(true)}
-                    style={{ background: "#fff", color: "#555", border: "1px solid #e0e0e0", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ background: "var(--surface)", color: "var(--ink-2)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-sm)", padding: "7px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "background var(--dur) var(--ease-out)" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-2)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; }}>
                     + Раздел
                   </button>
                   <button onClick={() => setAddingGlobal(true)}
-                    style={{ background: "#111", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ background: "var(--brand)", color: "var(--surface)", border: "none", borderRadius: "var(--r-sm)", padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", boxShadow: "var(--shadow-xs)", transition: "background var(--dur) var(--ease-out)" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--brand-hover)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "var(--brand)"; }}>
                     + Новая задача
                   </button>
                 </div>
@@ -5272,7 +5368,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 {loading ? (
-                  <div style={{ textAlign: "center", padding: "48px 0", color: "#bbb", fontSize: 13 }}>Загрузка…</div>
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "var(--muted)", fontSize: 13 }}>Загрузка…</div>
                 ) : (
                   <WeeklyView
                     tasks={tasks} today={today}
@@ -5297,6 +5393,8 @@ export default function Dashboard() {
           <LearningPanel />
         )}
 
+        {activeTab === "content" && <ContentSprint />}
+
         {activeTab === "team" && <TeamSection />}
         {activeTab === "brokers" && <ExpensesSection />}
         {activeTab === "rnp" && <RnpEfficiencySection />}
@@ -5319,10 +5417,10 @@ export default function Dashboard() {
       )}
 
       {undoState && (
-        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#111", color: "#fff", borderRadius: 12, padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.25)", zIndex: 9999, fontSize: 13, whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "var(--ink)", color: "var(--surface)", borderRadius: 12, padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.25)", zIndex: 9999, fontSize: 13, whiteSpace: "nowrap" }}>
           <span>Задача удалена: <b>{undoState.task.title}</b></span>
           <button onClick={undoDelete}
-            style={{ background: "#fff", color: "#111", border: "none", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ background: "var(--surface)", color: "var(--ink)", border: "none", borderRadius: 8, padding: "5px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             Отменить
           </button>
         </div>
