@@ -5062,6 +5062,7 @@ export default function Dashboard() {
   const [navEdit, setNavEdit] = useState(false);
   const [navOrder, setNavOrder] = useState<string[]>(NAV_ITEMS.map(i => i.key));
   const [navHidden, setNavHidden] = useState<string[]>([]);
+  const [dragKey, setDragKey] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [addingGlobal, setAddingGlobal] = useState(false);
   const [archiveKey, setArchiveKey] = useState(0);
@@ -5105,15 +5106,13 @@ export default function Dashboard() {
     localStorage.setItem("oazis_nav_v1", JSON.stringify({ order: navOrder, hidden: navHidden }));
   }, [navOrder, navHidden]);
 
-  const moveNav = (key: string, dir: number) => {
+  const reorderNav = (from: string, to: string) => {
+    if (from === to) return;
     setNavOrder(prev => {
-      const arr = [...prev];
-      const i = arr.indexOf(key);
-      if (i < 0) return prev;
-      let j = i + dir;
-      while (j >= 0 && j < arr.length && navHidden.includes(arr[j])) j += dir;
-      if (j < 0 || j >= arr.length) return prev;
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+      const arr = prev.filter(k => k !== from);
+      const idx = arr.indexOf(to);
+      if (idx < 0) return prev;
+      arr.splice(idx, 0, from);
       return arr;
     });
   };
@@ -5262,15 +5261,23 @@ export default function Dashboard() {
               {navEdit ? "Готово" : "Настроить"}
             </button>
           </div>
-          {visibleNav.map((item, idx) => {
+          {visibleNav.map((item) => {
             const active = activeTab === item.key;
+            const dragging = dragKey === item.key;
             return (
-              <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2 }}>
+              <div key={item.key}
+                draggable={navEdit}
+                onDragStart={navEdit ? (e) => { setDragKey(item.key); e.dataTransfer.effectAllowed = "move"; } : undefined}
+                onDragOver={navEdit ? (e) => { e.preventDefault(); if (dragKey && dragKey !== item.key) reorderNav(dragKey, item.key); } : undefined}
+                onDragEnd={navEdit ? () => setDragKey(null) : undefined}
+                onDrop={navEdit ? (e) => { e.preventDefault(); setDragKey(null); } : undefined}
+                style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 2, borderRadius: "var(--r-sm)", opacity: dragging ? 0.4 : 1, background: dragging ? "var(--surface-2)" : "transparent" }}
+              >
                 <button
                   onClick={() => { if (!navEdit) setActiveTab(item.key); }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0,
-                    padding: "8px 12px", borderRadius: "var(--r-sm)", border: "none", cursor: navEdit ? "default" : "pointer",
+                    padding: "8px 12px", borderRadius: "var(--r-sm)", border: "none", cursor: navEdit ? "grab" : "pointer",
                     background: active ? "var(--brand-soft)" : "transparent", fontFamily: "inherit",
                     color: active ? "var(--brand-ink)" : "var(--ink-2)",
                     fontWeight: active ? 600 : 500, fontSize: 13, textAlign: "left",
@@ -5279,18 +5286,13 @@ export default function Dashboard() {
                   onMouseEnter={e => { if (!active && !navEdit) e.currentTarget.style.background = "var(--surface-2)"; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
                 >
+                  {navEdit && <span aria-hidden style={{ color: "var(--faint)", fontSize: 15, lineHeight: 1, flexShrink: 0, letterSpacing: "-2px" }}>⠿</span>}
                   <span style={{ width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: active ? "var(--brand)" : "var(--muted)" }}><NavIcon k={item.key} /></span>
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
                 </button>
                 {navEdit && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, paddingRight: 4 }}>
-                    <button title="Вверх" onClick={() => moveNav(item.key, -1)} disabled={idx === 0}
-                      style={{ background: "none", border: "none", cursor: idx === 0 ? "default" : "pointer", color: idx === 0 ? "var(--faint)" : "var(--muted)", fontSize: 13, lineHeight: 1, padding: "2px 3px", fontFamily: "inherit" }}>↑</button>
-                    <button title="Вниз" onClick={() => moveNav(item.key, 1)} disabled={idx === visibleNav.length - 1}
-                      style={{ background: "none", border: "none", cursor: idx === visibleNav.length - 1 ? "default" : "pointer", color: idx === visibleNav.length - 1 ? "var(--faint)" : "var(--muted)", fontSize: 13, lineHeight: 1, padding: "2px 3px", fontFamily: "inherit" }}>↓</button>
-                    <button title="Удалить раздел" onClick={() => hideNav(item.key, item.label)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 15, lineHeight: 1, padding: "2px 4px", fontFamily: "inherit" }}>×</button>
-                  </span>
+                  <button title="Удалить раздел" onClick={() => hideNav(item.key, item.label)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: 16, lineHeight: 1, padding: "2px 8px", flexShrink: 0, fontFamily: "inherit" }}>×</button>
                 )}
               </div>
             );
