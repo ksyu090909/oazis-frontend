@@ -15,6 +15,86 @@ type Video = {
 const START = new Date("2026-07-15T00:00:00");
 const DEADLINE = new Date("2026-08-31T23:59:59");
 
+// Банк заходов для роликов (найм брокеров). Правила: без трудовых отношений,
+// без негатива, без прямых цифр дохода — уровень показываем образом и интригой.
+const IDEA_BANK: { group: string; items: { text: string; cta: string }[] }[] = [
+  {
+    group: "🎓 Старт с нуля / без опыта",
+    items: [
+      { text: "«Хочешь в недвижимость, но думаешь, что без опыта не возьмут? Как раз наоборот.»", cta: "напиши «с нуля»" },
+      { text: "«Не приходилось продавать? Отлично — научим с чистого листа.»", cta: "забери гайд для новичка" },
+      { text: "«Первое, что получает новый брокер, — наставника, который ведёт за руку.»", cta: "пиши «наставник»" },
+      { text: "«Пару недель назад она впервые услышала слово “показ”. Сегодня ведёт клиента сама.»", cta: "хочешь так же? напиши «хочу»" },
+      { text: "«Мы не ищем готовых. Мы выращиваем.»", cta: "приходи учиться" },
+      { text: "«Пошаговая система: от первого звонка до первой сделки. Тебе останется просто идти.»", cta: "забери план старта" },
+    ],
+  },
+  {
+    group: "💡 Профессия / призвание",
+    items: [
+      { text: "«Есть профессия, где каждый день — новые люди, объекты и эмоции.»", cta: "узнать подробнее" },
+      { text: "«Однажды помогаешь человеку найти дом мечты — и понимаешь, что нашёл своё дело.»", cta: "начни с нами" },
+      { text: "«Недвижимость — это не “показать квартиру”. Это доверие и большие решения.»", cta: "хочешь попробовать?" },
+      { text: "«Профессия, в которую влюбляются. И почти никто потом не уходит.»", cta: "узнай почему" },
+      { text: "«Тут растёшь не по инструкции, а по результату.»", cta: "напиши «расти»" },
+      { text: "«Каждая сделка — маленькая победа. И их может быть много.»", cta: "приходи за первой" },
+    ],
+  },
+  {
+    group: "🤝 Наставник / среда / команда",
+    items: [
+      { text: "«У нас новичок никогда не остаётся один — рядом наставник-капитан.»", cta: "пиши «капитан»" },
+      { text: "«Среда решает. Когда вокруг сильные — растёшь быстрее.»", cta: "попасть в среду" },
+      { text: "«Раз в квартал лучшие собираются за одним столом — “Завтрак чемпионов”.»", cta: "хочешь за этот стол?" },
+      { text: "«Команда, которая радуется твоей первой сделке как своей.»", cta: "присоединяйся" },
+      { text: "«Тебя не оставят разбираться в одиночку — доведут до результата.»", cta: "узнай, как" },
+      { text: "«Мы верим в тебя раньше, чем ты сам поверишь.»", cta: "напиши «хочу»" },
+    ],
+  },
+  {
+    group: "✨ Результат-вау (образ, без сумм)",
+    items: [
+      { text: "«Вот как выглядит первая сделка новичка.» (кадр: подпись, рукопожатие, ключи)", cta: "хочешь свою?" },
+      { text: "«Ключи в руках клиента — и понимаешь, ради чего всё это.»", cta: "начни путь" },
+      { text: "«Смотри, что человек может себе позволить всего через год в профессии.»", cta: "узнать как" },
+      { text: "«Это не про “стараться сильнее”. Это про “делать точнее”.»", cta: "пиши «точнее»" },
+      { text: "«Первая сделка меняет всё. Дальше ты уже не тот.»", cta: "сделай первый шаг" },
+      { text: "«Показ → встреча → сделка. Реалити о том, как это происходит у нас.»", cta: "смотри и приходи" },
+    ],
+  },
+  {
+    group: "🚀 Уровень / масштаб (интрига)",
+    items: [
+      { text: "«Недвижимость бывает разной. Мы — про объекты другого уровня.»", cta: "узнать, какого" },
+      { text: "«Тут ты сам управляешь своим временем и своим ростом.»", cta: "хочу так же" },
+      { text: "«Это точка, откуда начинается другой масштаб.»", cta: "напиши «масштаб»" },
+      { text: "«Хочешь профессию, где твой рост зависит только от тебя?»", cta: "узнай подробнее" },
+      { text: "«Мы показываем не квартиры. Мы показываем, как здесь растут люди.»", cta: "расти с нами" },
+      { text: "«Место, где твои амбиции — это плюс.»", cta: "приходи" },
+    ],
+  },
+  {
+    group: "📨 Приглашение / призыв",
+    items: [
+      { text: "«Давно смотришь в сторону недвижимости? Кажется, пора.»", cta: "напиши «пора»" },
+      { text: "«Если чувствуешь, что готов на большее — начни с одного сообщения.»", cta: "пиши «готов»" },
+      { text: "«Забери гайд “Как сделать первую сделку” и реши сам, твоё это или нет.»", cta: "ссылка в описании" },
+      { text: "«Один разговор может изменить твой год. Запишись на встречу.»", cta: "оставь заявку" },
+      { text: "«Расскажем, как всё устроено изнутри. Без воды.»", cta: "напиши «изнутри»" },
+      { text: "«Приходи посмотреть, как живёт команда один день. Вживую.»", cta: "записаться на день" },
+    ],
+  },
+  {
+    group: "🌱 Истории / трансформация",
+    items: [
+      { text: "«Пришла попробовать “на месяц”. Осталась и ведёт сделки.»", cta: "попробуй и ты" },
+      { text: "«Начинал с простого любопытства. Теперь — один из лучших.»", cta: "начни с любопытства" },
+      { text: "«История о том, как обычный человек стал брокером, которому доверяют.»", cta: "стань таким же" },
+      { text: "«Каждый чемпион когда-то был новичком в свой первый день.»", cta: "сделай свой первый день" },
+    ],
+  },
+];
+
 function Bar({ value, total, tone = "brand" }: { value: number; total: number; tone?: "brand" | "success" }) {
   const pct = total ? Math.round((value / total) * 100) : 0;
   return (
@@ -48,6 +128,19 @@ export function ContentSprint() {
   const [now, setNow] = useState<Date | null>(null);
   const [tab, setTab] = useState<"pipeline" | "scripts">("pipeline");
   const [selN, setSelN] = useState<number | null>(null);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<string | null>(null);
+
+  const copyIdea = async (id: string, text: string) => {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    setCopiedIdx(id);
+    setTimeout(() => setCopiedIdx(null), 1200);
+  };
 
   useEffect(() => { setNow(new Date()); }, []);
 
@@ -237,6 +330,45 @@ export function ContentSprint() {
           </div>
         </>
       ) : (
+        <>
+        {/* Банк заходов — готовые хуки для роликов */}
+        <div style={{ marginBottom: 16, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-xs)", overflow: "hidden" }}>
+          <button onClick={() => setBankOpen(o => !o)}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "13px 16px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>💡 Банк заходов для роликов ({IDEA_BANK.reduce((s, g) => s + g.items.length, 0)})</span>
+            <span style={{ fontSize: 12.5, color: "var(--brand)", fontWeight: 600 }}>{bankOpen ? "свернуть ↑" : "развернуть ↓"}</span>
+          </button>
+          {bankOpen && (
+            <div style={{ borderTop: "1px solid var(--border)" }}>
+              <div style={{ padding: "10px 16px", fontSize: 12.5, color: "var(--muted)", background: "var(--surface-2)" }}>
+                Правила: без трудовых отношений · без негатива · без прямых цифр дохода. Копируй заход → вставляй в сценарий и дорабатывай.
+              </div>
+              {IDEA_BANK.map((g, gi) => (
+                <div key={g.group}>
+                  <div style={{ padding: "10px 16px 6px", fontSize: 12, fontWeight: 600, color: "var(--brand-ink)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{g.group}</div>
+                  {g.items.map((it, ii) => {
+                    const id = `${gi}-${ii}`;
+                    const num = IDEA_BANK.slice(0, gi).reduce((s, x) => s + x.items.length, 0) + ii + 1;
+                    const full = `Хук: ${it.text}\nCTA: ${it.cta}`;
+                    return (
+                      <div key={id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 16px", borderTop: "1px solid var(--border)" }}>
+                        <span style={{ fontSize: 12, color: "var(--muted)", width: 22, flexShrink: 0, paddingTop: 2 }}>{num}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>{it.text}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>→ {it.cta}</div>
+                        </div>
+                        <button onClick={() => copyIdea(id, full)}
+                          style={{ flexShrink: 0, background: copiedIdx === id ? "var(--success-soft)" : "var(--surface)", color: copiedIdx === id ? "var(--success-ink)" : "var(--ink-2)", border: `1px solid ${copiedIdx === id ? "var(--success-border)" : "var(--border-strong)"}`, borderRadius: "var(--r-sm)", padding: "4px 10px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                          {copiedIdx === id ? "✓ Скопировано" : "Копировать"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, alignItems: "start" }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", boxShadow: "var(--shadow-xs)", maxHeight: 640, overflowY: "auto" }}>
             {videos.map(v => {
@@ -272,6 +404,7 @@ export function ContentSprint() {
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );
