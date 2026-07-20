@@ -21,6 +21,7 @@ type CeoMeeting = {
   id: number;
   meeting_date: string;
   notes: string;
+  is_completed: boolean;
   items: CeoItem[];
   counts: { discuss: number; in_progress: number; done: number; stopped: number };
   // Пункты, которые были в этой повестке, но уехали на более позднюю планёрку
@@ -126,6 +127,19 @@ export function CeoReportSection() {
     const created = await res.json();
     await load(false);
     setSelectedId(created.id);
+  };
+
+  const completeMeeting = async (m: CeoMeeting) => {
+    const open = m.items.filter(i => i.status !== "done").length;
+    if (!window.confirm(
+      `Завершить планёрку ${fmtDate(m.meeting_date)}?\n\n` +
+      `Незакрытых пунктов: ${open} — они переедут в следующую планёрку.\n` +
+      `Готовые останутся зафиксированными здесь.`
+    )) return;
+    const res = await fetch(`${API}/api/ceo/meetings/${m.id}/complete`, { method: "POST" });
+    const body = await res.json();
+    await load(false);
+    if (body.next_meeting_id) setSelectedId(body.next_meeting_id);
   };
 
   const deleteMeeting = async (m: CeoMeeting) => {
@@ -241,8 +255,18 @@ export function CeoReportSection() {
                 готово {selected.counts.done} / {selected.items.length}
               </span>
             </h2>
-            <button onClick={() => deleteMeeting(selected)} style={{ ...btnBase,
-              borderColor: "var(--danger-border)", color: "var(--danger-ink)" }}>Удалить планёрку</button>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              {selected.is_completed ? (
+                <span style={{ ...btnBase, cursor: "default", background: "var(--success-soft)",
+                  borderColor: "var(--success-border)", color: "var(--success-ink)" }}>Планёрка проведена</span>
+              ) : (
+                <button onClick={() => completeMeeting(selected)} style={{ ...btnBase,
+                  background: "var(--brand)", borderColor: "var(--brand)", color: "#fff" }}>
+                  Планёрка завершена</button>
+              )}
+              <button onClick={() => deleteMeeting(selected)} style={{ ...btnBase,
+                borderColor: "var(--danger-border)", color: "var(--danger-ink)" }}>Удалить планёрку</button>
+            </div>
           </div>
 
           {/* Конспект */}
