@@ -23,6 +23,8 @@ type CeoMeeting = {
   notes: string;
   items: CeoItem[];
   counts: { discuss: number; in_progress: number; done: number; stopped: number };
+  // Пункты, которые были в этой повестке, но уехали на более позднюю планёрку
+  carried_away?: (CeoItem & { moved_to: string })[];
 };
 
 const STATUS_META: Record<string, { label: string; bg: string; ink: string; border: string }> = {
@@ -348,6 +350,29 @@ export function CeoReportSection() {
               </div>
             );
           })}
+
+          {/* Уехавшие дальше — были в этой повестке, ведутся в более поздней планёрке */}
+          {!!selected.carried_away?.length && (
+            <div style={{ marginTop: 18, marginBottom: 14, opacity: 0.55 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+                Перенесено на следующие планёрки
+              </div>
+              {selected.carried_away.map(i => (
+                <div key={i.id} style={{
+                  background: "var(--surface)", border: "1px dashed var(--border)",
+                  borderRadius: "var(--r-md)", padding: "9px 14px", marginBottom: 8,
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+                }}>
+                  <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{i.title}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>→ {fmtDate(i.moved_to)}</span>
+                    <StatusChip status={i.status} />
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Добавление пункта */}
           <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
