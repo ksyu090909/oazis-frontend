@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ContentSprint } from "./content-sprint";
+import { SspSection } from "./ssp-report";
 import { CeoReportSection } from "./ceo-report";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -105,6 +106,7 @@ const NAV_ITEMS = [
   { key: "sales",       label: "Отдел продаж",    icon: "↗"  },
   { key: "support",     label: "Сопровождение",   icon: "✓"  },
   { key: "rnp",         label: "Эффективность компании", icon: "📋" },
+  { key: "ssp",         label: "ССП 2026",        icon: "◎"  },
   { key: "weekly",      label: "HR",              icon: "📅" },
   { key: "knowledge",   label: "Обучение",        icon: "📖" },
   { key: "content",     label: "Контент",         icon: "🎬" },
@@ -125,6 +127,7 @@ const NAV_ICON_PATHS: Record<string, React.ReactNode> = {
   sales: (<><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>),
   support: (<><path d="M12 3l7 3v5c0 4.6-3.1 7.7-7 9-3.9-1.3-7-4.4-7-9V6z" /><path d="M9 12l2 2 4-4" /></>),
   rnp: (<><path d="M3 12h4l2.5 7 4-14L16 12h5" /></>),
+  ssp: (<><circle cx="12" cy="12" r="8.4" /><path d="M12 3.6v4.2" /><path d="M12 16.2v4.2" /><path d="M3.6 12h4.2" /><path d="M16.2 12h4.2" /><path d="M9.5 12.2l1.8 1.8 3.4-3.6" /></>),
   weekly: (<><circle cx="9" cy="8" r="3.4" /><path d="M3.4 20a5.8 5.8 0 0 1 11.2 0" /><path d="M15.8 12.6l1.7 1.7L21 11" /></>),
   knowledge: (<><path d="M12 6.5C10.5 5.4 8.2 4.8 6 4.8c-1.4 0-2.4.3-3 .5v13c.6-.2 1.6-.5 3-.5 2.2 0 4.5.6 6 1.7 1.5-1.1 3.8-1.7 6-1.7 1.4 0 2.4.3 3 .5v-13c-.6-.2-1.6-.5-3-.5-2.2 0-4.5.6-6 1.7z" /><path d="M12 6.5V19" /></>),
   content: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M10 9.5l5 2.8-5 2.8z" /></>),
@@ -5403,6 +5406,7 @@ export default function Dashboard() {
         {activeTab === "team" && <TeamSection />}
         {activeTab === "brokers" && <ExpensesSection />}
         {activeTab === "rnp" && <RnpEfficiencySection />}
+        {activeTab === "ssp" && <SspSection />}
         {activeTab === "ceo" && <CeoReportSection />}
 
         {activeTab === "weekly" && <HRDashboard />}
