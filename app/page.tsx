@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { ContentSprint } from "./content-sprint";
+import { CeoReportSection } from "./ceo-report";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -100,6 +101,7 @@ const MOCK_SUPPORT_DEALS: SupportDeal[] = [
 
 const NAV_ITEMS = [
   { key: "deals",       label: "Главная",         icon: "⌂"  },
+  { key: "ceo",         label: "Отчёт СЕО",       icon: "◈"  },
   { key: "sales",       label: "Отдел продаж",    icon: "↗"  },
   { key: "support",     label: "Сопровождение",   icon: "✓"  },
   { key: "rnp",         label: "Эффективность компании", icon: "📋" },
@@ -119,6 +121,7 @@ const DEPARTMENTS = NAV_ITEMS;
 // Единый набор навигационных иконок (line-стиль, наследуют currentColor от состояния)
 const NAV_ICON_PATHS: Record<string, React.ReactNode> = {
   deals: (<><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></>),
+  ceo: (<><rect x="4" y="4" width="16" height="16" rx="2.5" /><path d="M8 9h8" /><path d="M8 13h5" /><path d="M15.5 15.5l1.5 1.5 3-3" /></>),
   sales: (<><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></>),
   support: (<><path d="M12 3l7 3v5c0 4.6-3.1 7.7-7 9-3.9-1.3-7-4.4-7-9V6z" /><path d="M9 12l2 2 4-4" /></>),
   rnp: (<><path d="M3 12h4l2.5 7 4-14L16 12h5" /></>),
@@ -5400,6 +5403,7 @@ export default function Dashboard() {
         {activeTab === "team" && <TeamSection />}
         {activeTab === "brokers" && <ExpensesSection />}
         {activeTab === "rnp" && <RnpEfficiencySection />}
+        {activeTab === "ceo" && <CeoReportSection />}
 
         {activeTab === "weekly" && <HRDashboard />}
         {activeTab === "finance" && <FinanceSection />}
