@@ -1,5 +1,28 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// ── Архив + живой хвост ─────────────────────────────────────────────────────
+// Январь–июнь зафиксированы: это цифры из месячных презентаций на момент отчёта.
+// Факт в таблице правят задним числом (март в презентации 11 056 075 ₽,
+// в листе «Факт» сейчас 11 192 032 ₽), поэтому закрытые месяцы живьём НЕ тянем.
+// Июль и дальше подтягиваются с бэкенда по мере заполнения таблицы.
+type LiveMonth = { index: number; month: string; fact: number; rentFact: number };
+
+function useLiveOpiu() {
+  const [live, setLive] = useState<LiveMonth[]>([]);
+  const [state, setState] = useState<"loading" | "ok" | "off">("loading");
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API}/api/ssp/opiu-fact`)
+      .then(r => r.json())
+      .then(d => { if (!alive) return; setLive(Array.isArray(d.months) ? d.months : []); setState("ok"); })
+      .catch(() => { if (alive) setState("off"); });
+    return () => { alive = false; };
+  }, []);
+  return { live, state };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ССП 2026 — план/факт за 1 полугодие (январь–июнь).
@@ -26,6 +49,16 @@ const FIN = {
     { opuPlan: 5_127_262, opuRent: 18.62, plan: 7_872_879, fact: 4_877_606, rentPlan: 21.21, rentFact: 18.17 },
     { opuPlan: 5_815_763, opuRent: 19.56, plan: 8_873_118, fact: 1_032_514, rentPlan: 24.2, rentFact: 6.0 },
     { opuPlan: 6_160_014, opuRent: 19.98, plan: 7_378_826, fact: 9_391_510, rentPlan: 23.02, rentFact: 22.25 },
+  ],
+  // План ОПиУ на июль–декабрь: зафиксирован в январе, не меняется.
+  // Нужен, чтобы у живых месяцев было с чем сравнивать факт.
+  opuPlanRest: [
+    { month: "Июль", opuPlan: 7_537_015, opuRent: 21.39 },
+    { month: "Август", opuPlan: 7_881_266, opuRent: 21.69 },
+    { month: "Сентябрь", opuPlan: 8_569_767, opuRent: 22.23 },
+    { month: "Октябрь", opuPlan: 8_225_516, opuRent: 21.97 },
+    { month: "Ноябрь", opuPlan: 8_225_516, opuRent: 21.97 },
+    { month: "Декабрь", opuPlan: 8_569_767, opuRent: 22.23 },
   ],
   tasks: [
     { text: "Доп. доход 0,4% от выручки со свободных средств на РС (ежедневно)", status: "done", note: "внедрено с января (янв: 72 014 ₽)" },
@@ -964,8 +997,26 @@ function FinTab() {
   const h1Plan = FIN.months.reduce((s, m) => s + m.plan, 0);
   const h1Fact = FIN.months.reduce((s, m) => s + m.fact, 0);
   const h1Opu = FIN.months.reduce((s, m) => s + m.opuPlan, 0);
+  const { live, state: liveState } = useLiveOpiu();
   return (
     <>
+      <div style={{
+        display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 18, padding: "12px 16px",
+        background: liveState === "off" ? "var(--warn-soft)" : "var(--surface-2)",
+        border: `1px solid ${liveState === "off" ? "var(--warn-border)" : "var(--border)"}`,
+        borderRadius: "var(--r-md)", fontSize: 12.5, lineHeight: 1.55,
+        color: liveState === "off" ? "var(--warn-ink)" : "var(--ink-2)",
+      }}>
+        <span aria-hidden style={{ flexShrink: 0 }}>{liveState === "off" ? "⚠" : "🔒"}</span>
+        <span>
+          <b>Январь–июнь зафиксированы</b> — это цифры из месячных презентаций на момент отчёта, они не меняются.
+          Факт в таблице ОПиУ правят задним числом: например, март в презентации 11 056 075 ₽, а в листе «Факт» сейчас 11 192 032 ₽.
+          {liveState === "ok" && live.length > 0 && <> Месяцы с июля подтягиваются из таблицы автоматически — сейчас загружено: {live.length}.</>}
+          {liveState === "ok" && live.length === 0 && <> Июль в таблице ещё не заполнен — появится здесь сам, как только там будут цифры.</>}
+          {liveState === "off" && <> Бэкенд сейчас недоступен, поэтому новые месяцы не подтянулись — архив январь–июнь показан полностью.</>}
+        </span>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginBottom: 22 }}>
         <BigStat label="Факт к годовому плану ОПиУ" value={`${fmtMln(h1Fact)} млн ₽`} pct={pctOf(h1Fact, h1Opu)}
           hint={`план ОПиУ за H1 — ${fmtMln(h1Opu)} млн ₽ · идём с опережением утверждённого плана`} />
@@ -1020,6 +1071,28 @@ function FinTab() {
                 <td style={tdStyle}><PlanFactBar pct={pctOf(h1Fact, h1Opu)} /></td>
                 <td style={{ ...tdNum, color: "var(--ink-2)" }}>{pctOf(h1Fact, FIN.yearGoal)}% годовой цели</td>
               </tr>
+
+              {/* Живой хвост: месяцы с июля, подтянутые из таблицы ОПиУ */}
+              {live.map(lm => {
+                const rest = FIN.opuPlanRest[lm.index - 6];
+                if (!rest) return null;
+                const pctOpu = pctOf(lm.fact, rest.opuPlan);
+                return (
+                  <tr key={lm.index} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>
+                      {lm.month}
+                      <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 600, color: "var(--brand-ink)", background: "var(--brand-soft)", padding: "2px 7px", borderRadius: "var(--r-pill)", whiteSpace: "nowrap" }}>из таблицы</span>
+                    </td>
+                    <td style={tdNum}>{fmtRub(rest.opuPlan)}</td>
+                    <td style={{ ...tdNum, color: "var(--faint)" }}>—</td>
+                    <td style={{ ...tdNum, fontWeight: 600 }}>{fmtRub(lm.fact)}</td>
+                    <td style={tdStyle}><PctChip pct={pctOpu} /></td>
+                    <td style={{ ...tdStyle, color: "var(--faint)", textAlign: "right", fontSize: 12 }}>—</td>
+                    <td style={tdStyle}><PlanFactBar pct={pctOpu} /></td>
+                    <td style={tdNum}>{rest.opuRent.toLocaleString("ru-RU")}% → {lm.rentFact.toLocaleString("ru-RU")}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
