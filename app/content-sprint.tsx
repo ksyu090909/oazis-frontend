@@ -242,22 +242,31 @@ export function ContentSprint() {
               const active = v.n === selN;
               const hasText = (v.script_text || "").trim().length > 0;
               return (
-                <button key={v.n} onClick={() => setSelN(v.n)}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", background: active ? "var(--brand-soft)" : "transparent", fontFamily: "inherit" }}>
-                  <span style={{ fontSize: 12, color: "var(--muted)", width: 20, flexShrink: 0 }}>{v.n}</span>
-                  <span style={{ flex: 1, fontSize: 13, color: active ? "var(--brand-ink)" : "var(--ink)", fontWeight: active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.theme || "Без названия"}</span>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: hasText ? "var(--success)" : "var(--border-strong)" }} title={hasText ? "Сценарий написан" : "Пусто"} />
-                </button>
+                <div key={v.n} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", background: active ? "var(--brand-soft)" : "transparent" }}>
+                  <button onClick={() => setSelN(v.n)}
+                    style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "10px 4px 10px 12px", border: "none", cursor: "pointer", background: "transparent", fontFamily: "inherit" }}>
+                    <span style={{ fontSize: 12, color: "var(--muted)", width: 20, flexShrink: 0 }}>{v.n}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: active ? "var(--brand-ink)" : "var(--ink)", fontWeight: active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.theme || "Без названия"}</span>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: hasText ? "var(--success)" : "var(--border-strong)" }} title={hasText ? "Сценарий написан" : "Пусто"} />
+                  </button>
+                  <button onClick={() => removeVideo(v.n)} title="Удалить ролик"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 16, lineHeight: 1, padding: "10px 12px 10px 6px", flexShrink: 0, fontFamily: "inherit" }}>×</button>
+                </div>
               );
             })}
             {videos.length === 0 && <div style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>Нет роликов</div>}
+            <button onClick={addVideo}
+              style={{ display: "block", width: "100%", padding: "11px 12px", border: "none", cursor: "pointer", background: "transparent", color: "var(--brand-ink)", fontSize: 13, fontWeight: 600, textAlign: "left", fontFamily: "inherit" }}>＋ Добавить ролик</button>
           </div>
 
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 20, boxShadow: "var(--shadow-xs)", minHeight: 520 }}>
             {sel ? (
               <>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>Ролик {sel.n} · автор {sel.author}</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--ink)", marginBottom: 14 }}>{sel.theme || "Без названия"}</div>
+                <input value={sel.theme} placeholder="Название темы…"
+                  onChange={e => setLocal(sel.n, { theme: e.target.value })}
+                  onBlur={e => persist(sel.n, { theme: e.target.value.trim() })}
+                  style={{ display: "block", width: "100%", fontSize: 18, fontWeight: 600, color: "var(--ink)", margin: "0 0 14px -9px", padding: "4px 8px", border: "1px solid transparent", borderRadius: "var(--r-sm)", background: "transparent", fontFamily: "inherit" }} />
                 <textarea
                   value={sel.script_text}
                   onChange={e => setLocal(sel.n, { script_text: e.target.value })}
