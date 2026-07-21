@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ContentSprint } from "./content-sprint";
 import { SspSection } from "./ssp-report";
 import { CeoReportSection } from "./ceo-report";
+import { RepeatSalesPanel, REPEAT_DATA } from "./sales-repeat";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -1088,12 +1089,54 @@ type SalesData = {
   funnel: FunnelStage[]; bottleneck: string; brokers: SalesBroker[];
 };
 
+const SALES_VIEWS = [
+  { key: "funnel",  label: "Воронка" },
+  { key: "brokers", label: "Рейтинг брокеров" },
+  { key: "rnp",     label: "РНП" },
+  { key: "repeat",  label: "Повторные" },
+] as const;
+type SalesView = (typeof SALES_VIEWS)[number]["key"];
+
+function SalesViewTabs({ view, setView }: { view: SalesView; setView: (v: SalesView) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 8 }}>
+      {SALES_VIEWS.map(v => (
+        <button key={v.key} onClick={() => setView(v.key)} style={{
+          fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: "var(--r-sm)", cursor: "pointer", fontFamily: "inherit",
+          background: view === v.key ? "var(--ink)" : "var(--surface)", color: view === v.key ? "var(--surface)" : "var(--ink-2)",
+          border: view === v.key ? "1px solid var(--ink)" : "1px solid var(--border-strong)",
+          transition: "background var(--dur) var(--ease-out)",
+        }}>{v.label}</button>
+      ))}
+    </div>
+  );
+}
+
+/** Шапка + переключатель. Рисуется всегда, в том числе при ошибке загрузки —
+ *  иначе падение Google Sheets отрезает доступ к подразделам, которым данные не нужны. */
+function SalesShell({ title, subtitle, view, setView, children }: {
+  title: string; subtitle: string; view: SalesView; setView: (v: SalesView) => void; children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>{title}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{subtitle}</div>
+        </div>
+        <SalesViewTabs view={view} setView={setView} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function SalesDashboard() {
   const [data, setData] = React.useState<SalesData | null>(null);
   const [rnpData, setRnpData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [view, setView] = React.useState<"funnel" | "brokers" | "rnp">("funnel");
+  const [view, setView] = React.useState<SalesView>("funnel");
   const [rnpMonth, setRnpMonth] = React.useState(currentMonthRu());
 
   React.useEffect(() => {
@@ -1113,8 +1156,27 @@ function SalesDashboard() {
       .catch(() => {});
   }, [view, rnpMonth]);
 
-  if (loading) return <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загрузка данных продаж…</div>;
-  if (error || !data) return <div style={{ padding: 40, textAlign: "center", color: "var(--danger)", fontSize: 13 }}>{error}</div>;
+  // Повторные продажи — статичная раскладка, ей данные из Sheets не нужны.
+  // Рисуем до проверок загрузки, иначе падение /api/sales/rating прячет и этот подраздел.
+  if (view === "repeat") return (
+    <SalesShell title="Повторные продажи · Отдел продаж" subtitle={`Данные на ${REPEAT_DATA.updated} · вносятся вручную`} view={view} setView={setView}>
+      <RepeatSalesPanel />
+    </SalesShell>
+  );
+
+  if (loading) return (
+    <SalesShell title="РНП · Отдел продаж" subtitle="Google Sheets" view={view} setView={setView}>
+      <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Загрузка данных продаж…</div>
+    </SalesShell>
+  );
+  if (error || !data) return (
+    <SalesShell title="РНП · Отдел продаж" subtitle="Google Sheets" view={view} setView={setView}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--danger)", fontSize: 13 }}>
+        {error || "Ошибка загрузки данных"}
+        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 6 }}>Подраздел «Повторные» доступен — ему данные не нужны.</div>
+      </div>
+    </SalesShell>
+  );
 
   const maxFunnelVal = data.funnel[0]?.value || 1;
 
@@ -1126,16 +1188,7 @@ function SalesDashboard() {
           <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>РНП · Отдел продаж</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Период: {data.period} · Google Sheets</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(["funnel", "brokers", "rnp"] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: "var(--r-sm)", cursor: "pointer", fontFamily: "inherit",
-              background: view === v ? "var(--ink)" : "var(--surface)", color: view === v ? "var(--surface)" : "var(--ink-2)",
-              border: view === v ? "1px solid var(--ink)" : "1px solid var(--border-strong)",
-              transition: "background var(--dur) var(--ease-out)",
-            }}>{v === "funnel" ? "Воронка" : v === "brokers" ? "Рейтинг брокеров" : "РНП"}</button>
-          ))}
-        </div>
+        <SalesViewTabs view={view} setView={setView} />
       </div>
 
       {/* Метрики верхнего уровня */}
