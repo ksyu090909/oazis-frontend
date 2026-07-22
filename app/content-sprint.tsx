@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 type Video = {
-  n: number; theme: string; author: string; pub_date: string | null;
+  n: number; pos: number; theme: string; author: string; pub_date: string | null;
   script: boolean; shot: boolean; edit: boolean; publish: boolean; script_text: string;
 };
 
@@ -48,13 +48,16 @@ export function ContentSprint() {
   const [now, setNow] = useState<Date | null>(null);
   const [tab, setTab] = useState<"pipeline" | "scripts">("pipeline");
   const [selN, setSelN] = useState<number | null>(null);
+  const [dragN, setDragN] = useState<number | null>(null);
+  const [overN, setOverN] = useState<number | null>(null);
   useEffect(() => { setNow(new Date()); }, []);
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("content_videos").select("*").order("n");
+      const { data, error } = await supabase.from("content_videos").select("*")
+        .order("pos", { ascending: true, nullsFirst: false }).order("n");
       if (error) { setLoading(false); return; }
-      setVideos((data || []).map(v => ({ ...v, script_text: v.script_text ?? "" })));
+      setVideos((data || []).map((v, i) => ({ ...v, script_text: v.script_text ?? "", pos: v.pos ?? i + 1 })));
       setLoading(false);
     })();
   }, []);
@@ -68,20 +71,68 @@ export function ContentSprint() {
   };
   const save = (n: number, changes: Partial<Video>) => { setLocal(n, changes); persist(n, changes); };
 
+  // Порядок хранится в pos, а n — стабильный id строки. Номер на экране = позиция в списке,
+  // поэтому нумерация всегда сплошная: 1, 2, 3… даже после удалений и перестановок.
+  const applyOrder = (list: Video[]) => {
+    const before = new Map(videos.map(v => [v.n, v.pos]));
+    const next = list.map((v, i) => ({ ...v, pos: i + 1 }));
+    setVideos(next);
+    next.forEach(v => { if (before.get(v.n) !== v.pos) persist(v.n, { pos: v.pos }); });
+    return next;
+  };
+
   const addVideo = async () => {
     const nextN = videos.reduce((m, v) => Math.max(m, v.n), 0) + 1;
-    const row: Video = { n: nextN, theme: "", author: "Ксения", pub_date: null, script: false, shot: false, edit: false, publish: false, script_text: "" };
+    const nextPos = videos.length + 1;
+    const row: Video = { n: nextN, pos: nextPos, theme: "", author: "Ксения", pub_date: null, script: false, shot: false, edit: false, publish: false, script_text: "" };
     setVideos(prev => [...prev, row]);
     setSelN(nextN);
-    await supabase.from("content_videos").insert({ n: nextN, theme: "", author: "Ксения" });
+    await supabase.from("content_videos").insert({ n: nextN, pos: nextPos, theme: "", author: "Ксения" });
   };
 
   const removeVideo = async (n: number) => {
     if (!confirm("Удалить этот ролик вместе со сценарием?")) return;
-    setVideos(prev => prev.filter(v => v.n !== n));
+    applyOrder(videos.filter(v => v.n !== n));
     if (selN === n) setSelN(null);
     await supabase.from("content_videos").delete().eq("n", n);
   };
+
+  const reorder = (fromN: number, toN: number) => {
+    if (fromN === toN) return;
+    const from = videos.findIndex(v => v.n === fromN);
+    const to = videos.findIndex(v => v.n === toN);
+    if (from < 0 || to < 0) return;
+    const next = [...videos];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    applyOrder(next);
+  };
+
+  const dnd = (v: Video) => ({
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (overN !== v.n) setOverN(v.n);
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      if (dragN !== null) reorder(dragN, v.n);
+      setDragN(null); setOverN(null);
+    },
+    onDragEnd: () => { setDragN(null); setOverN(null); },
+  });
+
+  const handleProps = (v: Video) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => { setDragN(v.n); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(v.n)); },
+  });
+
+  const dropEdge = (v: Video): "top" | "bottom" | null => {
+    if (dragN === null || overN !== v.n || dragN === v.n) return null;
+    return videos.findIndex(x => x.n === dragN) < videos.findIndex(x => x.n === v.n) ? "bottom" : "top";
+  };
+
+  const handleStyle: React.CSSProperties = { cursor: "grab", color: "var(--muted)", fontSize: 13, lineHeight: 1, userSelect: "none", textAlign: "center" };
 
   const total = videos.length;
   const c = (f: keyof Video) => videos.filter(v => v[f]).length;
@@ -179,6 +230,7 @@ export function ContentSprint() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
+                  <th style={{ ...th, width: 26 }}></th>
                   <th style={{ ...th, width: 34, textAlign: "center" }}>№</th>
                   <th style={th}>Тема ролика</th>
                   <th style={th}>Автор</th>
@@ -191,9 +243,15 @@ export function ContentSprint() {
                 </tr>
               </thead>
               <tbody>
-                {videos.map(v => (
-                  <tr key={v.n} style={{ opacity: v.publish ? 0.6 : 1 }}>
-                    <td style={{ ...tdc, color: "var(--muted)" }}>{v.n}</td>
+                {videos.map((v, i) => {
+                  const edge = dropEdge(v);
+                  return (
+                  <tr key={v.n} {...dnd(v)} style={{
+                    opacity: dragN === v.n ? 0.35 : v.publish ? 0.6 : 1,
+                    background: edge ? "var(--brand-soft)" : undefined,
+                  }}>
+                    <td {...handleProps(v)} style={{ ...td, ...handleStyle, padding: "7px 2px 7px 8px" }} title="Перетащи, чтобы изменить порядок">⠿</td>
+                    <td style={{ ...tdc, color: "var(--muted)" }}>{i + 1}</td>
                     <td style={td}>
                       <input value={v.theme} placeholder="Название темы…"
                         onChange={e => setLocal(v.n, { theme: e.target.value })}
@@ -220,7 +278,8 @@ export function ContentSprint() {
                         style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 17, lineHeight: 1, padding: 2 }}>×</button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -233,19 +292,27 @@ export function ContentSprint() {
             <span><b style={{ color: "var(--ink-2)" }}>Сценарий</b> → Ксения / Юля</span>
             <span><b style={{ color: "var(--ink-2)" }}>Снято + Монтаж</b> → Ева</span>
             <span><b style={{ color: "var(--ink-2)" }}>Опубликовано</b> → Юля (в срок)</span>
+            <span>Порядок съёмки меняется перетаскиванием за <b style={{ color: "var(--ink-2)" }}>⠿</b> — номера пересчитываются сами</span>
           </div>
         </>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 16, alignItems: "start" }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", boxShadow: "var(--shadow-xs)", maxHeight: 640, overflowY: "auto" }}>
-            {videos.map(v => {
+            {videos.map((v, i) => {
               const active = v.n === selN;
               const hasText = (v.script_text || "").trim().length > 0;
+              const edge = dropEdge(v);
               return (
-                <div key={v.n} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)", background: active ? "var(--brand-soft)" : "transparent" }}>
+                <div key={v.n} {...dnd(v)} style={{
+                  display: "flex", alignItems: "center", borderBottom: "1px solid var(--border)",
+                  background: active ? "var(--brand-soft)" : "transparent",
+                  opacity: dragN === v.n ? 0.35 : 1,
+                  boxShadow: edge === "top" ? "inset 0 2px 0 var(--brand)" : edge === "bottom" ? "inset 0 -2px 0 var(--brand)" : undefined,
+                }}>
+                  <span {...handleProps(v)} style={{ ...handleStyle, padding: "10px 0 10px 8px", flexShrink: 0 }} title="Перетащи, чтобы изменить порядок">⠿</span>
                   <button onClick={() => setSelN(v.n)}
-                    style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "10px 4px 10px 12px", border: "none", cursor: "pointer", background: "transparent", fontFamily: "inherit" }}>
-                    <span style={{ fontSize: 12, color: "var(--muted)", width: 20, flexShrink: 0 }}>{v.n}</span>
+                    style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "10px 4px 10px 8px", border: "none", cursor: "pointer", background: "transparent", fontFamily: "inherit" }}>
+                    <span style={{ fontSize: 12, color: "var(--muted)", width: 20, flexShrink: 0 }}>{i + 1}</span>
                     <span style={{ flex: 1, fontSize: 13, color: active ? "var(--brand-ink)" : "var(--ink)", fontWeight: active ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.theme || "Без названия"}</span>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: hasText ? "var(--success)" : "var(--border-strong)" }} title={hasText ? "Сценарий написан" : "Пусто"} />
                   </button>
@@ -262,7 +329,7 @@ export function ContentSprint() {
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 20, boxShadow: "var(--shadow-xs)", minHeight: 520 }}>
             {sel ? (
               <>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>Ролик {sel.n} · автор {sel.author}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>Ролик {videos.findIndex(v => v.n === sel.n) + 1} · автор {sel.author}</div>
                 <input value={sel.theme} placeholder="Название темы…"
                   onChange={e => setLocal(sel.n, { theme: e.target.value })}
                   onBlur={e => persist(sel.n, { theme: e.target.value.trim() })}
