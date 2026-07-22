@@ -32,7 +32,22 @@ function useLiveOpiu() {
 
 // Статусы — по цветовой разметке в отчётах: зелёный / жёлтый / красный / белый.
 type Status = "done" | "partial" | "fail" | "stale" | "wip";
-type TaskRow = { text: string; status: Status; note?: string };
+
+// Срок задачи. ССП 2026 — документ с годовым горизонтом, поэтому у цели без
+// явной даты срок = конец 2026 ("year"), и в полугодовой оценке она ещё не
+// «просрочена». "h1" ставится только там, где срок назван в самом источнике
+// (дедлайн, квартал, «ежемесячно/еженедельно») и он попал внутрь января–июня.
+// Своих сроков не выдумываем: если в источнике срока нет — остаётся "year".
+type Due = "h1" | "year";
+
+// Темп по измеримой годовой цели — считается только там, где число есть
+// в источнике. Годовую цель нельзя оценивать по цвету в середине года,
+// но можно по темпу: сколько набрано к 30.06.
+//   kind "sum"   — нарастающий итог (прибыль, лиды): сверяем с половиной года.
+//   kind "level" — уровень/доля (чек-лист, конверсия): сверяем с целью напрямую.
+type Pace = { fact: number; goal: number; unit: string; kind: "sum" | "level"; asOf: string };
+
+type TaskRow = { text: string; status: Status; note?: string; due?: Due; pace?: Pace };
 
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь"];
 const MONTHS_SHORT = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн"];
@@ -61,16 +76,16 @@ const FIN = {
     { month: "Декабрь", opuPlan: 8_569_767, opuRent: 22.23 },
   ],
   tasks: [
-    { text: "Доп. доход 0,4% от выручки со свободных средств на РС (ежедневно)", status: "done", note: "внедрено с января (янв: 72 014 ₽)" },
-    { text: "Контроль пропорционального расхода бюджетов (еженедельно)", status: "done", note: "регулярная задача с января" },
-    { text: "Контроль оплаты рассрочек — статистика сумм (ежемесячно)", status: "done", note: "дебиторка снижена с 24,6 до 9,3 млн ₽" },
-    { text: "Формирование резервного фонда (ежемесячно)", status: "done", note: "регулярная задача" },
-    { text: "Выплата дивидендов собственникам (ежемесячно)", status: "done", note: "H1: 28,0 млн ₽ факт при 28,0 млн плане" },
+    { text: "Доп. доход 0,4% от выручки со свободных средств на РС (ежедневно)", status: "done", due: "h1", note: "внедрено с января (янв: 72 014 ₽)" },
+    { text: "Контроль пропорционального расхода бюджетов (еженедельно)", status: "done", due: "h1", note: "регулярная задача с января" },
+    { text: "Контроль оплаты рассрочек — статистика сумм (ежемесячно)", status: "done", due: "h1", note: "дебиторка снижена с 24,6 до 9,3 млн ₽" },
+    { text: "Формирование резервного фонда (ежемесячно)", status: "done", due: "h1", note: "регулярная задача" },
+    { text: "Выплата дивидендов собственникам (ежемесячно)", status: "done", due: "h1", note: "H1: 28,0 млн ₽ факт при 28,0 млн плане" },
     { text: "Легальная оптимизация УСН до 3,5%", status: "done", note: "в отчётах зелёный: январь — стратегия проработана, февраль — реализация" },
-    { text: "Встречи с командой CEO-1 по ОПиУ и Балансу (ежемесячно)", status: "fail", note: "январь — жёлтый («пока только с СЕО»), февраль — красный; с марта из отчётов исчезло" },
-    { text: "Платёжный календарь (дедлайн 31.01.26)", status: "fail", note: "красный и в январе, и в феврале (дедлайн сдвигали на 28.02, затем на 31.03); с апреля не упоминается" },
-    { text: "Ежеквартальные акты сверки с застройщиками", status: "fail", note: "ни разу не упомянуто в отчётах янв–июнь" },
-    { text: "Решение по хранению резервного фонда (до 31.01.26)", status: "fail", note: "в отчётах не упоминалось" },
+    { text: "Встречи с командой CEO-1 по ОПиУ и Балансу (ежемесячно)", status: "fail", due: "h1", note: "январь — жёлтый («пока только с СЕО»), февраль — красный; с марта из отчётов исчезло" },
+    { text: "Платёжный календарь (дедлайн 31.01.26)", status: "fail", due: "h1", note: "красный и в январе, и в феврале (дедлайн сдвигали на 28.02, затем на 31.03); с апреля не упоминается" },
+    { text: "Ежеквартальные акты сверки с застройщиками", status: "fail", due: "h1", note: "ни разу не упомянуто в отчётах янв–июнь" },
+    { text: "Решение по хранению резервного фонда (до 31.01.26)", status: "fail", due: "h1", note: "в отчётах не упоминалось" },
   ] as TaskRow[],
 };
 
@@ -88,17 +103,17 @@ const SALES = {
   ],
   targets: { kvalZadatok: 11.4, kvalSdelka: 9.64, kvalVstrecha: 50, check: 1_200_000 },
   tasks: [
-    { text: "Категоризация брокеров АВС + регламент распределения лидов", status: "done", note: "с января, обновляется ежемесячно" },
-    { text: "Лидорубы в структуре ОП под управлением РОПа", status: "done", note: "интегрировано в январе" },
-    { text: "ОКК: 100% клиентских разговоров", status: "done", note: "организовано через ИИ «Эктем»" },
-    { text: "Отдел сопровождения под управленческий контроль", status: "done", note: "взят в янв–фев, далее передан СОО" },
+    { text: "Категоризация брокеров АВС + регламент распределения лидов", status: "done", due: "h1", note: "с января, обновляется ежемесячно" },
+    { text: "Лидорубы в структуре ОП под управлением РОПа", status: "done", due: "h1", note: "интегрировано в январе" },
+    { text: "ОКК: 100% клиентских разговоров", status: "done", due: "h1", note: "организовано через ИИ «Эктем»" },
+    { text: "Отдел сопровождения под управленческий контроль", status: "done", due: "h1", note: "взят в янв–фев, далее передан СОО" },
     { text: "Воронки Битрикс24: основная, повторные, КБ, статусы касаний", status: "partial", note: "«в процессе» с января по июнь; «Постоянные клиенты» — план июля" },
     { text: "Категоризация квал-лидов A/B/C в CRM", status: "partial", note: "внедрена в июне, эффекта нет — в июле скоринг переносят в лиды" },
-    { text: "Обучение в Академии для РГ (все РГ со стажем < 3 мес)", status: "partial", note: "переносилось фев→март→апрель, финальный статус не зафиксирован" },
+    { text: "Обучение в Академии для РГ (все РГ со стажем < 3 мес)", status: "partial", due: "h1", note: "переносилось фев→март→апрель, финальный статус не зафиксирован" },
     { text: "Тест квалификатора лидов (30+ лидов)", status: "partial", note: "«в процессе» янв–фев, далее из отчётов исчезло" },
-    { text: "Комиссия от застройщиков от 8,5% (еженедельный контроль)", status: "partial", note: "достигалась только март–апрель (8,4%), фев 7,4%, май 7,5%" },
+    { text: "Комиссия от застройщиков от 8,5% (еженедельный контроль)", status: "partial", due: "h1", note: "достигалась только март–апрель (8,4%), фев 7,4%, май 7,5%" },
     { text: "ИИ-переписчик", status: "partial", note: "внедрение начато в марте, результат в отчётах не отражён" },
-    { text: "Блокировка кнопки «Взять лид» при просрочках (янв)", status: "fail", note: "не реализовано — решили менять воронку" },
+    { text: "Блокировка кнопки «Взять лид» при просрочках (янв)", status: "fail", due: "h1", note: "не реализовано — решили менять воронку" },
     { text: "Повторные продажи / серийные покупатели 12–40 млн", status: "fail", note: "март: «нет повторных продаж»; системы нет, воронка — план июля" },
   ] as TaskRow[],
 };
@@ -117,16 +132,16 @@ const MKT = {
   tasks: [
     { text: "Рост лидов с бюджетом 30+ млн", status: "done", note: "Q1 — 118 квал-лидов 30+ (за весь 2025 — 196); янв: 11,5% vs 5,8% в 2025" },
     { text: "Рассылки/мессенджеры: новые каналы", status: "done", note: "автообзвоны внедрены (март: 251 лид по 517 ₽); СМС-тест — дорого; WA возвращают" },
-    { text: "Пересмотр KPI сотрудников ОМ + систематизация директолога", status: "done", note: "сделано в январе (замена маркетолога, помощник введён)" },
-    { text: "Доля квал-лидов с контента 7% → 20%", status: "partial", note: "янв 12,8%, фев 18%, март 14%, апр 9% — рост к 2025 (7,5%), но 20% не достигнуты" },
-    { text: "Новый сайт за 3 месяца + SEO (5000 визитов/мес, 10% лидов)", status: "partial", note: "сдвиг ~3 мес: дизайн апрель, «сдача июнь» → «к 1 июля» → в планах июля снова «запустить»" },
-    { text: "Партнёрская программа: доля сделок 2% → 7%", status: "partial", note: "фев: партнёры+рекомендации 3,6% квалов; в июле снова «стратегия партнёрки»" },
-    { text: "Email-рассылки (I–II кв)", status: "partial", note: "интеграция в форму «в процессе» (янв), далее заменено автообзвонами" },
-    { text: "Telegram: +100% квал-лидов (40/мес)", status: "fail", note: "янв — 20; апрельская цель 30 — «не удалось»" },
+    { text: "Пересмотр KPI сотрудников ОМ + систематизация директолога", status: "done", due: "h1", note: "сделано в январе (замена маркетолога, помощник введён)" },
+    { text: "Доля квал-лидов с контента 7% → 20%", status: "partial", pace: { fact: 9, goal: 20, unit: "%", kind: "level", asOf: "апрель — последний месяц с цифрой в отчётах" }, note: "янв 12,8%, фев 18%, март 14%, апр 9% — рост к 2025 (7,5%), но 20% не достигнуты" },
+    { text: "Новый сайт за 3 месяца + SEO (5000 визитов/мес, 10% лидов)", status: "partial", due: "h1", note: "сдвиг ~3 мес: дизайн апрель, «сдача июнь» → «к 1 июля» → в планах июля снова «запустить»" },
+    { text: "Партнёрская программа: доля сделок 2% → 7%", status: "partial", pace: { fact: 3.6, goal: 7, unit: "%", kind: "level", asOf: "февраль — последний месяц с цифрой в отчётах" }, note: "фев: партнёры+рекомендации 3,6% квалов; в июле снова «стратегия партнёрки»" },
+    { text: "Email-рассылки (I–II кв)", status: "partial", due: "h1", note: "интеграция в форму «в процессе» (янв), далее заменено автообзвонами" },
+    { text: "Telegram: +100% квал-лидов (40/мес)", status: "fail", pace: { fact: 20, goal: 40, unit: "квал-лидов/мес", kind: "level", asOf: "январь — последний месяц с цифрой в отчётах" }, note: "янв — 20; апрельская цель 30 — «не удалось»" },
     { text: "Telegram-посевы", status: "fail", note: "не реализовано — блогеры подняли цены на 20–30%, отложено" },
-    { text: "Инфлюенсеры: 3–5 интеграций/мес", status: "fail", note: "февраль — «начали переговоры», далее не упоминается" },
-    { text: "BI-инструменты + модель атрибуции (II кв)", status: "fail", note: "в отчётах янв–июнь не упоминается" },
-    { text: "Когортный анализ квал-лидов 2025 (I кв)", status: "fail", note: "янв: «некому делать», далее не упоминается" },
+    { text: "Инфлюенсеры: 3–5 интеграций/мес", status: "fail", due: "h1", note: "февраль — «начали переговоры», далее не упоминается" },
+    { text: "BI-инструменты + модель атрибуции (II кв)", status: "fail", due: "h1", note: "в отчётах янв–июнь не упоминается" },
+    { text: "Когортный анализ квал-лидов 2025 (I кв)", status: "fail", due: "h1", note: "янв: «некому делать», далее не упоминается" },
   ] as TaskRow[],
 };
 
@@ -144,10 +159,10 @@ const OKK = {
   tasks: [
     { text: "% звонков брокеров проверено ИИ → 100%", status: "done", note: "ИИ «Эктем» выгружает 100% первичных квал-звонков (с февраля)" },
     { text: "% звонков лидорубов проверено ИИ → 100%", status: "done", note: "проверка лидорубов настроена; в июне — самостоятельная проверка КБ и «неудобно говорить»" },
-    { text: "План работы с новым брокером — первые 2 недели после экзамена", status: "partial", note: "заявлено в Q1, отдельного факта в отчётах нет" },
-    { text: "Результат чек-листа → от 85%", status: "fail", note: "максимум 80,64% в марте, к июню откат до 74% — цель 85% не достигнута" },
+    { text: "План работы с новым брокером — первые 2 недели после экзамена", status: "partial", due: "h1", note: "заявлено в Q1, отдельного факта в отчётах нет" },
+    { text: "Результат чек-листа → от 85%", status: "fail", pace: { fact: 74, goal: 85, unit: "%", kind: "level", asOf: "июнь" }, note: "максимум 80,64% в марте, к июню откат до 74% — цель 85% не достигнута" },
     { text: "Время обработки лида → до 7 минут (95%)", status: "stale", note: "в месячных отчётах ОКК не отслеживалось" },
-    { text: "Предложение показа в первичных звонках 70% → 80%", status: "partial", note: "70% достигнуто в марте, к маю просело до 55%; 80% не достигнуто" },
+    { text: "Предложение показа в первичных звонках 70% → 80%", status: "partial", pace: { fact: 55, goal: 80, unit: "%", kind: "level", asOf: "май — последний месяц с цифрой в отчётах" }, note: "70% достигнуто в марте, к маю просело до 55%; 80% не достигнуто" },
   ] as TaskRow[],
 };
 
@@ -176,14 +191,14 @@ const HR = {
 const CEO = {
   yearGoalChp: 78_700_000,
   tasks: [
-    { text: "Чистая прибыль компании по итогам года — 78,7 млн ₽", status: "partial", note: "H1 — 37,55 млн ₽ (47,7% годовой цели), почти по темпу" },
-    { text: "Внедрить работу с балансом на ежемесячной основе (с I кв)", status: "done", note: "запущено; фин. блок ведёт ОПиУ и Баланс с командой CEO-1" },
-    { text: "Система мотивации для Дира и РОМа от ЧП (внедрено со II кв)", status: "partial", note: "в планах января–марта повторяется, финального статуса в отчётах нет" },
+    { text: "Чистая прибыль компании по итогам года — 78,7 млн ₽", status: "partial", pace: { fact: 37_554_493, goal: 78_739_669, unit: "₽", kind: "sum", asOf: "H1, факт по ОПиУ" }, note: "H1 — 37,55 млн ₽ (47,7% годовой цели), почти по темпу" },
+    { text: "Внедрить работу с балансом на ежемесячной основе (с I кв)", status: "done", due: "h1", note: "запущено; фин. блок ведёт ОПиУ и Баланс с командой CEO-1" },
+    { text: "Система мотивации для Дира и РОМа от ЧП (внедрено со II кв)", status: "partial", due: "h1", note: "в планах января–марта повторяется, финального статуса в отчётах нет" },
     { text: "Вывести операционного директора (II / III кв)", status: "done", note: "СОО (Ильина) в роли с марта — раньше плана" },
     { text: "Разработка оргструктуры 3.0", status: "done", note: "в феврале «оргструктура 3.0 на 2026»; в кабинете — версия 4.0" },
     { text: "Найм и адаптация юриста и HR", status: "done", note: "февраль — «найм HR» помечен красным; закрыто в марте–апреле" },
     { text: "Блог: 20 000 подписчиков к декабрю 2026", status: "partial", note: "регулярное ведение блога, контент «дома» и «поляна»; цифра — цель конца года" },
-    { text: "Компания в правовом поле (постоянно)", status: "done", note: "юр. порядок в документах ведёт СОО, регулярный контроль юр. отдела" },
+    { text: "Компания в правовом поле (постоянно)", status: "done", due: "h1", note: "юр. порядок в документах ведёт СОО, регулярный контроль юр. отдела" },
     { text: "Промышленный шпионаж / анализ конкурентов", status: "partial", note: "конкурентные срезы силами HR и маркетинга; системного процесса нет" },
     { text: "Партнёрства и модель мастер-агентства", status: "done", note: "работа с Бисовкой (май–октябрь), Дашкиев, ЮГрупп, личный кабинет для партнёров" },
   ] as TaskRow[],
@@ -676,61 +691,175 @@ function scoreInk(s: number) { return s >= 85 ? "var(--success-ink)" : s >= 60 ?
 function scoreSoft(s: number) { return s >= 85 ? "var(--success-soft)" : s >= 60 ? "var(--warn-soft)" : "var(--danger-soft)"; }
 function scoreBorder(s: number) { return s >= 85 ? "var(--success-border)" : s >= 60 ? "var(--warn-border)" : "var(--danger-border)"; }
 
+// ── Методика расчёта ────────────────────────────────────────────────────────
+// Отчётная дата — 30.06.2026. Три правила, каждое видно в раскрытии строки:
+//
+// 1. Единица счёта — цель, а не строка. Вес цели = 1 независимо от того,
+//    расписана она одним пунктом или пятью подпунктами. Балл цели с
+//    подпунктами = среднее по ним. Дробление задачи не даёт лишних голосов.
+// 2. Считаем по сроку, а не по цвету. Срок прошёл: выполнено = 1,
+//    в процессе = 0,25 (начата, но просрочена), не выполнено = 0.
+//    Срок не наступил: выполнено досрочно = 1, иначе — по темпу, если у цели
+//    есть число; если числа нет — цель в полугодии не оценивается вовсе.
+//    Штрафовать за ненаступивший срок нельзя.
+// 3. Годовая цель с показателем считается по темпу, а не по статусу.
+//
+// Ограничение: сроков в источниках часто нет. Своих не выдумываем — цель без
+// срока остаётся годовой, и это видно в раскрытии как отдельная пометка.
+
+const AS_OF = "30.06.2026";
+
 /** Показатели: среднее помесячное выполнение плана, каждый месяц ограничен 100% —
  *  чтобы один сверхмесяц не закрывал провалы соседних. */
-function metricScore(pairs: { plan: number; fact: number }[]): number | null {
-  const valid = pairs.filter(p => p.plan > 0);
-  if (!valid.length) return null;
-  const sum = valid.reduce((s, p) => s + Math.min(100, (p.fact / p.plan) * 100), 0);
-  return Math.round(sum / valid.length);
+type MonthCell = { label: string; plan: number; fact: number; pct: number; capped: boolean };
+type MetricBreakdown = { cells: MonthCell[]; pct: number | null; unit: string };
+
+function metricBreakdown(pairs: { plan: number; fact: number }[], unit: string): MetricBreakdown {
+  const cells: MonthCell[] = [];
+  pairs.forEach((p, i) => {
+    if (!(p.plan > 0)) return;
+    const raw = (p.fact / p.plan) * 100;
+    cells.push({ label: MONTHS_SHORT[i] ?? `#${i + 1}`, plan: p.plan, fact: p.fact, pct: Math.min(100, raw), capped: raw > 100 });
+  });
+  if (!cells.length) return { cells, pct: null, unit };
+  return { cells, pct: Math.round(cells.reduce((s, c) => s + c.pct, 0) / cells.length), unit };
 }
 
-/** Задачи: выполнено = 1, в процессе = 0,5, не выполнено = 0. «Не актуально» не считаем. */
-function taskScore(tasks: TaskRow[]): number | null {
-  const scored = tasks.filter(t => t.status === "done" || t.status === "partial" || t.status === "fail");
-  if (!scored.length) return null;
-  const pts = scored.reduce((s, t) => s + (t.status === "done" ? 1 : t.status === "partial" ? 0.5 : 0), 0);
-  return Math.round((pts / scored.length) * 100);
+/** Балл одной задачи по правилу 2. points === null — задача в расчёт не входит. */
+type TaskVerdict = { task: TaskRow; points: number | null; why: string };
+
+function scoreTask(t: TaskRow): TaskVerdict {
+  if (t.status === "stale") return { task: t, points: null, why: "потеряла актуальность — в расчёт не входит" };
+  if (t.status === "wip") return { task: t, points: null, why: "статус не подведён — в расчёт не входит" };
+
+  const overdue = t.due === "h1";
+  if (t.status === "done")
+    return { task: t, points: 1, why: overdue ? "выполнена, срок был внутри полугодия" : "выполнена досрочно — срок цели конец 2026" };
+
+  if (overdue)
+    return t.status === "partial"
+      ? { task: t, points: 0.25, why: `срок прошёл до ${AS_OF}, задача в процессе — просрочена, а не наполовину сделана` }
+      : { task: t, points: 0, why: `срок прошёл до ${AS_OF}, задача не выполнена` };
+
+  // Годовая цель: срок ещё не наступил, по цвету судить нельзя.
+  if (t.pace) {
+    const target = t.pace.kind === "sum" ? t.pace.goal / 2 : t.pace.goal;
+    const ratio = Math.min(1, t.pace.fact / target);
+    return {
+      task: t, points: ratio,
+      why: t.pace.kind === "sum"
+        ? `годовая цель — считаем по темпу: ${fmtPace(t.pace.fact, t.pace.unit)} из ${fmtPace(target, t.pace.unit)}, нужных к середине года (${t.pace.asOf})`
+        : `годовая цель — считаем по темпу: ${fmtPace(t.pace.fact, t.pace.unit)} при цели ${fmtPace(t.pace.goal, t.pace.unit)} (${t.pace.asOf})`,
+    };
+  }
+  return { task: t, points: null, why: "годовая цель: срок не наступил, измеримого показателя нет — в полугодии не оценивается" };
 }
 
-type Efficiency = { key: TabKey; name: string; role: string; metric: number | null; metricLabel: string; tasks: number | null; total: number };
+function fmtPace(v: number, unit: string) {
+  if (unit === "₽") return `${fmtMln(v)} млн ₽`;
+  return `${Number.isInteger(v) ? v : v.toFixed(1).replace(".", ",")}${unit === "%" ? "%" : ` ${unit}`}`;
+}
+
+/** Цель = единица счёта (правило 1). parts — подпункты, если цель разбита. */
+type Goal = { text: string; note?: string; group?: string; parts: TaskVerdict[] };
+type GoalScore = { goal: Goal; points: number | null; split: boolean };
+type TaskBreakdown = {
+  scores: GoalScore[];
+  countedGoals: number;
+  totalGoals: number;
+  pct: number | null;
+  tally: { done: number; partial: number; fail: number; skipped: number };
+};
+
+function goalScore(g: Goal): GoalScore {
+  const counted = g.parts.filter(p => p.points !== null);
+  if (!counted.length) return { goal: g, points: null, split: g.parts.length > 1 };
+  return { goal: g, points: counted.reduce((s, p) => s + (p.points as number), 0) / counted.length, split: g.parts.length > 1 };
+}
+
+function taskBreakdown(goals: Goal[]): TaskBreakdown {
+  const scores = goals.map(goalScore);
+  const counted = scores.filter(s => s.points !== null);
+  const flat = goals.flatMap(g => g.parts);
+  return {
+    scores,
+    countedGoals: counted.length,
+    totalGoals: goals.length,
+    pct: counted.length ? Math.round((counted.reduce((s, c) => s + (c.points as number), 0) / counted.length) * 100) : null,
+    tally: {
+      done: flat.filter(v => v.task.status === "done").length,
+      partial: flat.filter(v => v.task.status === "partial").length,
+      fail: flat.filter(v => v.task.status === "fail").length,
+      skipped: flat.filter(v => v.points === null).length,
+    },
+  };
+}
+
+const asGoals = (tasks: TaskRow[]): Goal[] =>
+  tasks.map(t => ({ text: t.text, note: t.note, parts: [scoreTask(t)] }));
+
+/** СОО: фокусная задача месяца — одна цель. Её срок — сам месяц, он прошёл,
+ *  поэтому все пункты идут как due "h1". Подпункты усредняются внутри цели,
+ *  а не считаются каждый за отдельную задачу. */
+function cooGoals(): Goal[] {
+  return COO.flatMap(m =>
+    m.plan
+      .map(p => {
+        const parts: TaskRow[] = p.sub
+          ? p.sub.map(s => ({ text: s.text, status: s.status, due: "h1" as Due }))
+          : p.status ? [{ text: p.text, status: p.status, due: "h1" as Due }] : [];
+        return { text: p.text, note: p.note, group: m.month, parts: parts.map(scoreTask) };
+      })
+      .filter(g => g.parts.length > 0)
+  );
+}
+
+type Efficiency = {
+  key: TabKey; name: string; role: string;
+  metricLabel: string; metric: MetricBreakdown | null;
+  tasks: TaskBreakdown | null;
+  total: number;
+  caveat?: string;
+};
 
 function buildEfficiency(): Efficiency[] {
-  const cooTasks: TaskRow[] = COO.flatMap(m =>
-    m.plan.flatMap(p => (p.sub ? p.sub.map(s => ({ text: s.text, status: s.status })) : p.status ? [{ text: p.text, status: p.status }] : []))
-  ).filter(t => t.status !== "wip");
-
-  const mk = (key: TabKey, name: string, role: string, metric: number | null, metricLabel: string, tasks: number | null): Efficiency => {
-    const parts = [metric, tasks].filter((v): v is number => v !== null);
-    return { key, name, role, metric, metricLabel, tasks, total: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) };
+  const mk = (key: TabKey, name: string, role: string, metricLabel: string,
+              metric: MetricBreakdown | null, tasks: TaskBreakdown | null, caveat?: string): Efficiency => {
+    const parts = [metric?.pct ?? null, tasks?.pct ?? null].filter((v): v is number => v !== null);
+    return { key, name, role, metricLabel, metric, tasks, caveat, total: parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : 0 };
   };
 
+  const chpMetric = () => metricBreakdown(FIN.months.map(m => ({ plan: m.opuPlan, fact: m.fact })), "₽");
+  const valMetric = () => metricBreakdown(SALES.months.map(m => ({ plan: m.plan, fact: m.fact })), "₽");
+
+  // Порядок — по роли, не по баллу: это статус по направлениям, а не турнирная
+  // таблица. Люди с несопоставимыми целями не ранжируются друг против друга.
   return [
-    mk("ceo", "Ольга Изосина", "СЕО",
-      metricScore(FIN.months.map(m => ({ plan: m.opuPlan, fact: m.fact }))), "ЧП компании к плану ОПиУ", taskScore(CEO.tasks)),
-    mk("fin", "Алексей Изосин", "Финансовый директор",
-      metricScore(FIN.months.map(m => ({ plan: m.opuPlan, fact: m.fact }))), "ЧП к плану ОПиУ", taskScore(FIN.tasks)),
-    mk("sales", "Анна Радченко", "Директор по продажам",
-      metricScore(SALES.months.map(m => ({ plan: m.plan, fact: m.fact }))), "вал закрытых сделок", taskScore(SALES.tasks)),
-    mk("rop", "Мария Краузе", "РОП",
-      metricScore(SALES.months.map(m => ({ plan: m.plan, fact: m.fact }))), "вал закрытых сделок", null),
-    mk("okk", "Екатерина Грачёва", "Отдел контроля качества",
-      metricScore(OKK.months.filter(m => m.checkPlan && m.checkFact).map(m => ({ plan: m.checkPlan!, fact: m.checkFact! }))), "чек-лист ОП", taskScore(OKK.tasks)),
-    mk("mkt", "Юлия Побожьева", "Отдел маркетинга",
-      metricScore(MKT.months.map(m => ({ plan: m.kvalPlan, fact: m.kvalFact }))), "квал-лиды", taskScore(MKT.tasks)),
-    mk("hr", "София Клячина · Юлия Резепина", "HR",
-      metricScore(HR.months.map(m => ({ plan: m.outPlan, fact: m.outFact }))), "вывод сотрудников", taskScore(HR.tasks)),
-    mk("coo", "Ксения Ильина", "СОО",
-      null, "—", taskScore(cooTasks)),
+    mk("ceo", "Ольга Изосина", "СЕО", "ЧП компании к плану ОПиУ", chpMetric(), taskBreakdown(asGoals(CEO.tasks))),
+    mk("coo", "Ксения Ильина", "СОО", "планового показателя нет", null, taskBreakdown(cooGoals()),
+      "У СОО нет планового показателя — оценка только по фокусным задачам месячных планов. Это другой горизонт, чем годовые цели ССП у остальных: сравнивать балл СОО с их баллами напрямую некорректно."),
+    mk("fin", "Алексей Изосин", "Финансовый директор", "ЧП к плану ОПиУ", chpMetric(), taskBreakdown(asGoals(FIN.tasks))),
+    mk("sales", "Анна Радченко", "Директор по продажам", "вал закрытых сделок", valMetric(), taskBreakdown(asGoals(SALES.tasks))),
+    mk("rop", "Мария Краузе", "РОП", "вал закрытых сделок", valMetric(), null,
+      "Собственных задач ССП у РОП нет — оценка только по валу, общему с директором ОП."),
+    mk("okk", "Екатерина Грачёва", "Отдел контроля качества", "чек-лист ОП",
+      metricBreakdown(OKK.months.map(m => ({ plan: m.checkPlan ?? 0, fact: m.checkFact ?? 0 })), "%"), taskBreakdown(asGoals(OKK.tasks))),
+    mk("mkt", "Юлия Побожьева", "Отдел маркетинга", "квал-лиды",
+      metricBreakdown(MKT.months.map(m => ({ plan: m.kvalPlan, fact: m.kvalFact })), "шт."), taskBreakdown(asGoals(MKT.tasks))),
+    mk("hr", "Юлия Резепина (София Клячина)", "HR", "вывод сотрудников",
+      metricBreakdown(HR.months.map(m => ({ plan: m.outPlan, fact: m.outFact })), "чел."), taskBreakdown(asGoals(HR.tasks)),
+      "Направление ведёт Юлия Резепина — с февраля и весь оцениваемый период. Цели ССП на 2026 ставила София Клячина (в скобках), январь — её месяц. Балл относится к направлению, а не к конкретному человеку."),
   ];
 }
 
-/** Горизонтальные полосы эффективности — как «эффективность по РНП». */
+/** Горизонтальные полосы эффективности — как «эффективность по РНП».
+ *  Порядок — по роли, а не по убыванию балла: сортировка по баллу превращает
+ *  экран в турнирную таблицу и провоцирует сравнение людей, чьи цели
+ *  несопоставимы. Цифра у каждого остаётся, ранга между ними нет. */
 function EfficiencyBars({ items, goTo }: { items: Efficiency[]; goTo?: (k: TabKey) => void }) {
-  const sorted = [...items].sort((a, b) => b.total - a.total);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {sorted.map(e => (
+      {items.map(e => (
         <div key={e.key}
           onClick={goTo ? () => goTo(e.key) : undefined}
           style={{ display: "grid", gridTemplateColumns: "minmax(160px, 210px) 1fr 54px", gap: 12, alignItems: "center", cursor: goTo ? "pointer" : "default", padding: "4px 6px", borderRadius: "var(--r-sm)", transition: "background 150ms ease" }}
@@ -747,6 +876,386 @@ function EfficiencyBars({ items, goTo }: { items: Efficiency[]; goTo?: (k: TabKe
         </div>
       ))}
     </div>
+  );
+}
+
+/** Балл цели → короткая подпись и цвет. */
+function pointsLabel(p: number | null) {
+  if (p === null) return { text: "не считается", color: "var(--muted)" };
+  const pct = Math.round(p * 100);
+  return { text: `${pct}%`, color: pct >= 85 ? "var(--success-ink)" : pct >= 60 ? "var(--warn-ink)" : "var(--danger-ink)" };
+}
+
+/** Раскрытие строки: помесячный расчёт показателя со всей арифметикой. */
+function MetricDetail({ m, label }: { m: MetricBreakdown; label: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 8 }}>Показатель — {label}</div>
+      <table style={{ borderCollapse: "collapse", fontSize: 12.5, width: "100%", maxWidth: 460 }}>
+        <thead>
+          <tr>
+            <th style={{ ...thStyle, padding: "4px 8px" }}>Месяц</th>
+            <th style={{ ...thNum, padding: "4px 8px" }}>План</th>
+            <th style={{ ...thNum, padding: "4px 8px" }}>Факт</th>
+            <th style={{ ...thNum, padding: "4px 8px" }}>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {m.cells.map((c, i) => (
+            <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+              <td style={{ ...tdStyle, padding: "4px 8px" }}>{c.label}</td>
+              <td style={{ ...tdNum, padding: "4px 8px", color: "var(--ink-2)" }}>{m.unit === "₽" ? fmtMln(c.plan) : c.plan}</td>
+              <td style={{ ...tdNum, padding: "4px 8px", color: "var(--ink-2)" }}>{m.unit === "₽" ? fmtMln(c.fact) : c.fact}</td>
+              <td style={{ ...tdNum, padding: "4px 8px", fontWeight: 600, color: scoreInk(c.pct) }}>
+                {Math.round(c.pct)}%{c.capped && <span title="перевыполнение срезано до 100%" style={{ color: "var(--muted)", fontWeight: 400 }}> ↥</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.5 }}>
+        ({m.cells.map(c => Math.round(c.pct)).join(" + ")}) ÷ {m.cells.length} = <b>{m.pct}%</b>
+        {m.cells.some(c => c.capped) && <div style={{ color: "var(--muted)", marginTop: 3 }}>↥ — месяц перевыполнен, но засчитан как 100%: сверхмесяц не должен закрывать провалы соседних.</div>}
+      </div>
+    </div>
+  );
+}
+
+/** Раскрытие строки: все цели ССП со сроком, вердиктом и арифметикой. */
+function TasksDetail({ b }: { b: TaskBreakdown }) {
+  const counted = b.scores.filter(s => s.points !== null);
+  const skipped = b.scores.filter(s => s.points === null);
+  const row = (s: GoalScore, i: number) => {
+    const lbl = pointsLabel(s.points);
+    return (
+      <div key={i} style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "baseline", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--ink)" }}>
+            {s.goal.group && <span style={{ color: "var(--muted)", fontWeight: 400 }}>{s.goal.group} · </span>}
+            {s.goal.text}
+            {s.split && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {s.goal.parts.length} подпункта, считаются как одна цель</span>}
+          </div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: lbl.color, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{lbl.text}</div>
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.5 }}>
+          {s.split
+            ? s.goal.parts.map((p, j) => <div key={j}>· {p.task.text} — {p.why}</div>)
+            : s.goal.parts[0].why}
+        </div>
+        {s.goal.note && <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 3, lineHeight: 1.5 }}>{s.goal.note}</div>}
+      </div>
+    );
+  };
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>
+        Задачи ССП — {b.totalGoals} {plural(b.totalGoals, "цель", "цели", "целей")}, в расчёт вошло {b.countedGoals}
+      </div>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6 }}>
+        по строкам: {b.tally.done} выполнено · {b.tally.partial} в процессе · {b.tally.fail} не выполнено
+      </div>
+      {counted.map(row)}
+      {skipped.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginTop: 14, marginBottom: 2 }}>
+            Вне расчёта — {skipped.length}
+          </div>
+          {skipped.map(row)}
+        </>
+      )}
+      {b.pct !== null && (
+        <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 10, lineHeight: 1.5, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+          ({counted.map(s => Math.round((s.points as number) * 100)).join(" + ")}) ÷ {counted.length} = <b>{b.pct}%</b>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+/** Из чего собран итог. Балл, собранный из двух половин, и балл, стоящий на
+ *  одной ноге, — разные величины: без подписи их сравнивают как одинаковые. */
+function TotalComposition({ e }: { e: Efficiency }) {
+  const m = e.metric?.pct ?? null, t = e.tasks?.pct ?? null;
+  if (m === null || t === null) {
+    return (
+      <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 400 }}>
+        только {m !== null ? "показатель" : "задачи"}
+      </div>
+    );
+  }
+  return (
+    <div style={{ fontWeight: 400 }}>
+      <div style={{ display: "flex", height: 4, borderRadius: 2, overflow: "hidden", marginTop: 4, marginBottom: 3 }} aria-hidden>
+        <div style={{ width: "50%", background: scoreColor(m), opacity: 0.85 }} />
+        <div style={{ width: "50%", background: scoreColor(t), opacity: 0.5 }} />
+      </div>
+      <div style={{ fontSize: 10.5, color: "var(--muted)" }}>показатель {m} · задачи {t}</div>
+    </div>
+  );
+}
+
+/** Таблица эффективности с раскрытием: клик по строке показывает весь расчёт. */
+function EfficiencyTable({ items }: { items: Efficiency[] }) {
+  const [open, setOpen] = useState<TabKey[]>([]);
+  const allOpen = open.length === items.length;
+  const toggle = (k: TabKey) => setOpen(o => (o.includes(k) ? o.filter(x => x !== k) : [...o, k]));
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+        <button onClick={() => setOpen(allOpen ? [] : items.map(i => i.key))}
+          style={{ background: "none", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", padding: "4px 12px", fontSize: 12, color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}>
+          {allOpen ? "Свернуть всё" : "Развернуть весь расчёт"}
+        </button>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Руководитель</th>
+              <th style={thStyle}>Ключевой показатель</th>
+              <th style={{ ...thNum, width: 150 }}>Показатели</th>
+              <th style={{ ...thNum, width: 170 }}>Задачи ССП<div style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--warn-ink)", fontSize: 10.5 }}>самооценка</div></th>
+              <th style={{ ...thNum, width: 150 }}>Итого</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(e => {
+              const isOpen = open.includes(e.key);
+              const planMet = e.metric ? e.metric.cells.filter(c => c.pct >= 100).length : 0;
+              return (
+                <React.Fragment key={e.key}>
+                  <tr onClick={() => toggle(e.key)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer", background: isOpen ? "var(--surface-2)" : "transparent" }}>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>
+                      <span aria-hidden style={{ display: "inline-block", width: 14, color: "var(--muted)", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 150ms ease" }}>›</span>
+                      {e.name}
+                    </td>
+                    <td style={{ ...tdStyle, color: "var(--ink-2)" }}>{e.metricLabel}</td>
+                    <td style={tdNum}>
+                      {e.metric?.pct != null ? (
+                        <>
+                          <div>{e.metric.pct}%</div>
+                          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+                            {e.metric.cells.length} мес. · план выполнен в {planMet}
+                          </div>
+                        </>
+                      ) : <span style={{ color: "var(--faint)" }}>—</span>}
+                    </td>
+                    <td style={tdNum}>
+                      {e.tasks ? (
+                        <>
+                          <div>{e.tasks.pct !== null ? `${e.tasks.pct}%` : <span style={{ color: "var(--faint)" }}>—</span>}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+                            {e.tasks.countedGoals} из {e.tasks.totalGoals} {plural(e.tasks.totalGoals, "цели", "целей", "целей")} · {e.tasks.tally.done} ✓ {e.tasks.tally.partial} ◐ {e.tasks.tally.fail} ✗
+                          </div>
+                        </>
+                      ) : <span style={{ color: "var(--faint)" }}>—</span>}
+                    </td>
+                    <td style={tdNum}>
+                      <div style={{ fontWeight: 700, color: scoreInk(e.total) }}>{e.total}%</div>
+                      <TotalComposition e={e} />
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr style={{ background: "var(--surface-2)" }}>
+                      <td colSpan={5} style={{ padding: "4px 10px 18px 24px" }}>
+                        {e.caveat && (
+                          <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-border)", borderRadius: "var(--r-sm)", padding: "8px 10px", marginBottom: 14, lineHeight: 1.5 }}>
+                            {e.caveat}
+                          </div>
+                        )}
+                        <div style={{ display: "grid", gridTemplateColumns: e.metric ? "minmax(280px, 460px) 1fr" : "1fr", gap: 26, alignItems: "start" }}>
+                          {e.metric && <MetricDetail m={e.metric} label={e.metricLabel} />}
+                          {e.tasks && <TasksDetail b={e.tasks} />}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 14, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                          Итого: {[e.metric?.pct, e.tasks?.pct].filter(v => v != null).join(" и ")} → среднее <b>{e.total}%</b>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Цели ССП: достигнуты или нет
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Цель, зафиксированная в ССП в январе, и помесячный факт по ней.
+ *  Сюда попадают только цели с числом: «достигнута или нет» без баллов и весов.
+ *  series === null — цель зафиксирована, но факт в отчётах не замерялся. */
+type SspTarget = {
+  owner: string; name: string; goal: number; unit: "%" | "₽" | "шт.";
+  series: (number | null)[] | null; note?: string;
+};
+
+const SSP_TARGETS: SspTarget[] = [
+  { owner: "Отдел продаж", name: "конверсия квал → задаток", goal: SALES.targets.kvalZadatok, unit: "%",
+    series: SALES.months.map(m => m.kvalZadatok) },
+  { owner: "Отдел продаж", name: "конверсия квал → сделка", goal: SALES.targets.kvalSdelka, unit: "%",
+    series: SALES.months.map(m => m.kvalSdelka) },
+  { owner: "Отдел продаж", name: "конверсия квал → встреча", goal: SALES.targets.kvalVstrecha, unit: "%",
+    series: SALES.months.map(m => m.kvalVstrecha) },
+  { owner: "Отдел продаж", name: "средний чек", goal: SALES.targets.check, unit: "₽",
+    series: SALES.months.map(m => m.check) },
+  { owner: "ОКК", name: "результат чек-листа ОП", goal: 85, unit: "%",
+    series: OKK.months.map(m => m.checkFact) },
+  { owner: "ОКК", name: "предложение показа в первичных звонках", goal: 80, unit: "%",
+    series: OKK.months.map(m => m.showFact) },
+  { owner: "ОКК", name: "время обработки лида — до 7 минут (95%)", goal: 95, unit: "%",
+    series: null, note: "в месячных отчётах не замерялось" },
+  { owner: "Маркетинг", name: "доля квал-лидов с контента", goal: 20, unit: "%",
+    series: MKT.contentShare },
+  { owner: "HR", name: "устойчивый пул эффективных брокеров", goal: 40, unit: "шт.",
+    series: null, note: "цель зафиксирована, замера пула в отчётах нет" },
+  { owner: "HR", name: "текучесть персонала — с 207% до 60%", goal: 60, unit: "%",
+    series: null, note: "цель зафиксирована, замера за полугодие нет" },
+];
+
+function fmtTarget(v: number, unit: SspTarget["unit"]) {
+  if (unit === "₽") return `${fmtMln(v)} млн ₽`;
+  if (unit === "%") return `${v.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}%`;
+  return `${v} ${unit}`;
+}
+
+/** Цели ССП с зафиксированным числом — без баллов и весов.
+ *  Единственный блок раздела, который ничего не взвешивает: цель поставлена
+ *  в январе, факт помесячный, вопрос один — достигнута или нет. */
+function SspTargetsCard() {
+  const rows = SSP_TARGETS.map(t => {
+    const vals = (t.series ?? []).filter((v): v is number => v !== null);
+    if (!vals.length) return { t, avg: null, hit: 0, of: 0 };
+    return {
+      t,
+      avg: vals.reduce((s, v) => s + v, 0) / vals.length,
+      hit: vals.filter(v => v >= t.goal).length,
+      of: vals.length,
+    };
+  });
+  return (
+    <Card style={{ marginBottom: 22 }}>
+      <SectionTitle sub="Цели, у которых в ССП зафиксировано число. Ни баллов, ни весов: цель поставлена в январе, факт берётся помесячно, вопрос один — достигнута или нет. Это единственный блок раздела, который нечем оспорить.">
+        Цели ССП: достигнуты или нет
+      </SectionTitle>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Направление</th>
+              <th style={thStyle}>Цель ССП</th>
+              <th style={thNum}>Зафиксировано</th>
+              <th style={thNum}>Среднее за H1</th>
+              <th style={{ ...thNum, width: 150 }}>Достигнута</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => {
+              // Цвет — по среднему к цели, а не по числу попаданий: цель,
+              // перевыполненная в среднем, не должна выглядеть проблемой
+              // из-за одного слабого месяца. Красный — если не взята ни разу.
+              const reached = r.avg !== null && r.avg >= r.t.goal;
+              const never = r.of > 0 && r.hit === 0;
+              return (
+                <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ ...tdStyle, color: "var(--muted)", whiteSpace: "nowrap" }}>{r.t.owner}</td>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>{r.t.name}</td>
+                  <td style={{ ...tdNum, color: "var(--ink-2)" }}>{fmtTarget(r.t.goal, r.t.unit)}</td>
+                  <td style={tdNum}>{r.avg !== null ? fmtTarget(r.avg, r.t.unit) : <span style={{ color: "var(--faint)" }}>—</span>}</td>
+                  <td style={{ ...tdNum, fontWeight: 600, color: r.of === 0 ? "var(--muted)" : reached ? "var(--success-ink)" : never ? "var(--danger-ink)" : "var(--warn-ink)" }}>
+                    {r.of === 0
+                      ? <span style={{ fontWeight: 400, fontSize: 12 }}>{r.t.note}</span>
+                      : never ? `ни разу за ${r.of} мес.` : `${r.hit} из ${r.of} мес.`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 12, lineHeight: 1.55 }}>
+        Три цели зафиксированы, но не замерялись ни в одном месячном отчёте — по ним нельзя сказать ни «выполнено», ни «провалено».
+        Это вопрос к постановке замеров, а не к работе направлений.
+      </div>
+    </Card>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Результат к зафиксированной цели + ритмичность
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Накопительный результат к цели, зафиксированной в январе, и ритмичность —
+ *  в скольких месяцах план выполнен. Два числа вместо одного: среднее прячет
+ *  волатильность (ЧП — 126% плана при выполнении в 3 месяцах из 6), а
+ *  ритмичность её показывает. Фамилий здесь нет — это результат компании. */
+function ResultCard() {
+  const rows = [
+    {
+      name: "Чистая прибыль",
+      fact: FIN.months.reduce((s, m) => s + m.fact, 0),
+      base: FIN.months.reduce((s, m) => s + m.opuPlan, 0),
+      baseLabel: "план ОПиУ на H1, зафиксирован в январе",
+      hit: FIN.months.filter(m => m.fact >= m.opuPlan).length,
+      fmt: (v: number) => `${fmtMln(v)} млн ₽`,
+    },
+    {
+      name: "Вал закрытых сделок",
+      fact: SALES.months.reduce((s, m) => s + m.fact, 0),
+      base: SALES.yearGoalVal / 2,
+      baseLabel: "половина годовой цели ССП 350 млн ₽",
+      hit: SALES.months.filter(m => m.fact >= m.plan).length,
+      fmt: (v: number) => `${fmtMln(v)} млн ₽`,
+    },
+    {
+      name: "Квал-лиды",
+      fact: MKT.months.reduce((s, m) => s + m.kvalFact, 0),
+      base: MKT.months.reduce((s, m) => s + m.kvalPlan, 0),
+      baseLabel: "сумма помесячных планов — годовой цели в ССП нет",
+      hit: MKT.months.filter(m => m.kvalFact >= m.kvalPlan).length,
+      fmt: (v: number) => `${v} шт.`,
+    },
+  ];
+  return (
+    <Card style={{ marginBottom: 22 }}>
+      <SectionTitle sub="Накопительный факт к цели и отдельно — ритмичность: в скольких месяцах из шести план выполнен. Одно среднее прячет волатильность, два числа её показывают. Баллов и фамилий здесь нет: это результат компании, а не человека.">
+        Результат к зафиксированной цели
+      </SectionTitle>
+      <div style={{ display: "grid", gap: 12 }}>
+        {rows.map((r, i) => {
+          const pct = Math.round((r.fact / r.base) * 100);
+          return (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(150px, 1fr) auto auto", gap: 16, alignItems: "baseline", borderTop: i > 0 ? "1px solid var(--border)" : "none", paddingTop: i > 0 ? 12 : 0 }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>{r.fmt(r.fact)} · база: {r.baseLabel}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: scoreInk(Math.min(pct, 100)), fontVariantNumeric: "tabular-nums" }}>{pct}%</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>к цели</div>
+              </div>
+              <div style={{ textAlign: "right", minWidth: 110 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: scoreInk((r.hit / 6) * 100), fontVariantNumeric: "tabular-nums" }}>{r.hit} из 6</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>месяцев в плане</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -896,51 +1405,47 @@ function SummaryTab({ goTo }: { goTo: (k: TabKey) => void }) {
       verdict: "ИИ «Эктем» запущен и проверяет 100% звонков — сильная сторона. Чек-лист: пик 80,64% в марте, к июню откат до 74% при цели 85%." },
     { key: "mkt", role: "Отдел маркетинга", name: "Юлия Побожьева", tasks: MKT.tasks,
       verdict: "План по квал-лидам не выполнен ни разу с февраля (65–91%). Сайт — сдвиг ~3 мес. Сильная сторона: лиды 30+ млн кратно выросли." },
-    { key: "hr", role: "HR", name: "София Клячина · Юлия Резепина", tasks: HR.tasks,
-      verdict: "Цели ССП писала София Клячина, с февраля функцию ведёт Юлия Резепина. Вывод брокеров нестабилен (1–9/мес), устойчивого пула 40 ещё нет; апрельский exit-анализ — про адаптацию." },
+    { key: "hr", role: "HR", name: "Юлия Резепина (София Клячина)", tasks: HR.tasks,
+      verdict: "Функцию с февраля ведёт Юлия Резепина; цели ССП писала София Клячина, вела январь. Вывод брокеров нестабилен (1–9/мес), устойчивого пула 40 ещё нет; апрельский exit-анализ — про адаптацию." },
   ];
 
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 22 }}>
-        <BigStat label="Чистая прибыль, H1" value={`${fmtMln(finH1Fact)} млн ₽`} pct={pctOf(finH1Fact, finH1Plan)} hint={`план ${fmtMln(finH1Plan)} млн ₽ · годовая цель 78,7 млн — выполнено ${pctOf(finH1Fact, FIN.yearGoal)}%`} />
-        <BigStat label="Вал закрытых сделок, H1" value={`${fmtMln(salesH1Fact)} млн ₽`} pct={pctOf(salesH1Fact, salesH1Plan)} hint={`план месяцев ${fmtMln(salesH1Plan)} млн ₽ · от годовой цели 350 млн — ${pctOf(salesH1Fact, SALES.yearGoalVal)}%`} />
+        <BigStat label="Чистая прибыль, H1" value={`${fmtMln(finH1Fact)} млн ₽`} pct={pctOf(finH1Fact, finH1Plan)} hint={`процент — к заявкам ОП (${fmtMln(finH1Plan)} млн ₽). К плану ОПиУ, зафиксированному в январе, — ${pctOf(finH1Fact, FIN.months.reduce((s, m) => s + m.opuPlan, 0))}%. Годовая цель 78,7 млн — выполнено ${pctOf(finH1Fact, FIN.yearGoal)}%`} />
+        <BigStat label="Вал закрытых сделок, H1" value={`${fmtMln(salesH1Fact)} млн ₽`} pct={pctOf(salesH1Fact, salesH1Plan)} hint={`процент — к сумме помесячных планов (${fmtMln(salesH1Plan)} млн ₽). К половине годовой цели ССП 350 млн — ${pctOf(salesH1Fact, SALES.yearGoalVal / 2)}%`} />
         <BigStat label="Квал-лиды маркетинга, H1" value={`${kvalFact}`} pct={pctOf(kvalFact, kvalPlan)} hint={`план ${kvalPlan} · план не выполнен ни в один месяц с февраля`} />
         <BigStat label="Сделки, H1" value={`${dealsH1} из 352`} pct={pctOf(dealsH1, SALES.yearGoalDeals / 2)} hint={`27% годового плана · для графика нужно было ~176 за полугодие`} />
       </div>
 
+      <SspTargetsCard />
+      <ResultCard />
+
       <Card style={{ marginBottom: 22 }}>
-        <SectionTitle sub="Половина оценки — выполнение помесячного плана по ключевому показателю (каждый месяц ограничен 100%, чтобы сверхмесяц не закрывал провалы соседних), половина — задачи ССП: выполнено = 1, в процессе = 0,5, не выполнено = 0. Шкала как в «Эффективности компании»: от 85% — зелёный, от 60% — жёлтый.">
+        <SectionTitle sub="Половина оценки — выполнение помесячного плана по ключевому показателю (каждый месяц ограничен 100%, чтобы сверхмесяц не закрывал провалы соседних), половина — задачи ССП. Клик по строке в таблице раскрывает весь расчёт: помесячные цифры, каждую цель со сроком и арифметику итога. Порядок — по роли, не по баллу.">
           Эффективность руководителей за полугодие
         </SectionTitle>
         <EfficiencyBars items={eff} goTo={goTo} />
-        <div style={{ marginTop: 18, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Руководитель</th>
-                <th style={thStyle}>Ключевой показатель</th>
-                <th style={{ ...thStyle, width: 110, textAlign: "right" }}>Показатели</th>
-                <th style={{ ...thStyle, width: 110, textAlign: "right" }}>Задачи ССП</th>
-                <th style={{ ...thStyle, width: 90, textAlign: "right" }}>Итого</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...eff].sort((a, b) => b.total - a.total).map(e => (
-                <tr key={e.key} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ ...tdStyle, fontWeight: 500 }}>{e.name}</td>
-                  <td style={{ ...tdStyle, color: "var(--ink-2)" }}>{e.metricLabel}</td>
-                  <td style={tdNum}>{e.metric !== null ? `${e.metric}%` : <span style={{ color: "var(--faint)" }}>—</span>}</td>
-                  <td style={tdNum}>{e.tasks !== null ? `${e.tasks}%` : <span style={{ color: "var(--faint)" }}>—</span>}</td>
-                  <td style={{ ...tdNum, fontWeight: 700, color: scoreInk(e.total) }}>{e.total}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 12, lineHeight: 1.55 }}>
-          У РОП собственных задач ССП нет — оценка только по валу. У СОО нет планового показателя — оценка только по задачам.
-          Это моя методика расчёта, а не ваша утверждённая: если считаете иначе (без ограничения 100%, с другими весами) — скажите, пересчитаю.
+        <EfficiencyTable items={eff} />
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 14, lineHeight: 1.6 }}>
+          <b style={{ color: "var(--ink-2)" }}>Как считаются задачи.</b> Единица счёта — цель, а не строка: цель весит 1, даже
+          если расписана пятью подпунктами, — иначе дробление задачи давало бы лишние голоса. Балл ставится по сроку, а не по цвету.
+          Срок прошёл: выполнено = 1, в процессе = 0,25 (просрочена, а не наполовину сделана), не выполнено = 0.
+          Срок не наступил: выполнено досрочно = 1, иначе — по темпу к цели, если у цели есть измеримое число;
+          если числа нет — цель в полугодии не оценивается, потому что штрафовать за ненаступивший срок нельзя.
+          <br /><br />
+          ССП 2026 — документ с годовым горизонтом, поэтому у цели без явной даты срок = конец 2026. Своих сроков я не проставляла:
+          где в источнике срока нет, он остался годовым, и это видно в раскрытии. Годовых целей без измеримого показателя
+          в ССП много — это вопрос к постановке целей, а не к исполнителям.
+          <br /><br />
+          Это моя методика расчёта, а не ваша утверждённая: если считаете иначе (другие веса, другой порог для просрочки) — скажите, пересчитаю.
+          <div style={{ marginTop: 12, padding: "10px 12px", background: "var(--warn-soft)", border: "1px solid var(--warn-border)", borderRadius: "var(--r-sm)", color: "var(--warn-ink)", lineHeight: 1.55 }}>
+            <b>Это обзор, а не основание для решений по людям и деньгам.</b> Половина балла — задачи ССП, то есть статус,
+            который руководитель поставил себе в собственной презентации: внешней проверки у него нет. Вторая половина —
+            выполнение плана, который в части направлений ставится самим отделом. Для кадровых и денежных решений линейка
+            должна объявляться заранее, а факт браться из систем — за январь–июнь ни то, ни другое не выполнено.
+            Для таких решений смотрите блок «Цели ССП: достигнуты или нет» — там цель зафиксирована в январе, а факт помесячный.
+          </div>
         </div>
       </Card>
 
