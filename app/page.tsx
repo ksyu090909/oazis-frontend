@@ -5,6 +5,7 @@ import { ContentSprint } from "./content-sprint";
 import { SspSection } from "./ssp-report";
 import { CeoReportSection } from "./ceo-report";
 import { RepeatSalesPanel, REPEAT_DATA } from "./sales-repeat";
+import { MyTasksSection } from "./my-tasks";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -104,6 +105,7 @@ const MOCK_SUPPORT_DEALS: SupportDeal[] = [
 const NAV_ITEMS = [
   { key: "deals",       label: "Главная",         icon: "⌂"  },
   { key: "ceo",         label: "Отчёт СЕО",       icon: "◈"  },
+  { key: "mytasks",     label: "Мои задачи",      icon: "☑"  },
   { key: "sales",       label: "Отдел продаж",    icon: "↗"  },
   { key: "support",     label: "Сопровождение",   icon: "✓"  },
   { key: "rnp",         label: "Эффективность компании", icon: "📋" },
@@ -5461,6 +5463,7 @@ export default function Dashboard() {
         {activeTab === "rnp" && <RnpEfficiencySection />}
         {activeTab === "ssp" && <SspSection />}
         {activeTab === "ceo" && <CeoReportSection />}
+        {activeTab === "mytasks" && <MyTasksSection />}
 
         {activeTab === "weekly" && <HRDashboard />}
         {activeTab === "finance" && <FinanceSection />}
