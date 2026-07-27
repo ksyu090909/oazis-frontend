@@ -46,7 +46,14 @@ export function MyTasksSection() {
     const r = await fetch(`${API}/api/sprint-tasks/${id}/carry`, { method: "POST" });
     const res = await r.json();
     setBusy(null);
-    if (res.pending) alert("Вкладка следующего месяца ещё не создана — задача в очереди на перенос.");
+    if (res.pending) alert("Вкладка следующего месяца ещё не создана — задача поставлена в очередь на перенос.");
+    load();
+  };
+
+  const cancelCarry = async (id: number) => {
+    setBusy(id);
+    await fetch(`${API}/api/sprint-tasks/${id}/carry/cancel`, { method: "POST" });
+    setBusy(null);
     load();
   };
 
@@ -171,15 +178,27 @@ export function MyTasksSection() {
                         style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 6px", fontSize: 12, color: "var(--ink-2)", background: "var(--card)", fontFamily: "inherit" }} />
                     </td>
                     <td style={{ padding: "12px 16px 12px 8px", verticalAlign: "top", textAlign: "right" }}>
-                      <button onClick={() => carry(t.id)} disabled={t.carried_over}
-                        title="Перенести в следующий спринт"
-                        style={{
-                          border: "1px solid var(--border)", background: "var(--card)", borderRadius: 6,
-                          padding: "4px 9px", fontSize: 12, color: "var(--ink-2)", whiteSpace: "nowrap",
-                          cursor: t.carried_over ? "default" : "pointer", opacity: t.carried_over ? 0.55 : 1,
-                        }}>
-                        {t.carried_over ? "перенесена" : t.carry_pending ? "в очереди" : "→ спринт"}
-                      </button>
+                      {t.carried_over ? (
+                        <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>перенесена</span>
+                      ) : t.carry_pending ? (
+                        <button onClick={() => cancelCarry(t.id)}
+                          title="Убрать из очереди на перенос"
+                          style={{
+                            border: "1px solid var(--warn-border)", background: "var(--warn-soft)", borderRadius: 6,
+                            padding: "4px 9px", fontSize: 12, color: "var(--warn-ink)", whiteSpace: "nowrap", cursor: "pointer",
+                          }}>
+                          в очереди <span aria-hidden="true">✕</span>
+                        </button>
+                      ) : (
+                        <button onClick={() => carry(t.id)}
+                          title="Перенести в следующий спринт"
+                          style={{
+                            border: "1px solid var(--border)", background: "var(--card)", borderRadius: 6,
+                            padding: "4px 9px", fontSize: 12, color: "var(--ink-2)", whiteSpace: "nowrap", cursor: "pointer",
+                          }}>
+                          → спринт
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
