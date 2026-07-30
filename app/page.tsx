@@ -82,6 +82,21 @@ type DealStage = { id: string; name: string };
 type DealCategory = { id: number; name: string; stages: DealStage[] };
 type DealsMeta = { categories: DealCategory[] };
 
+type SupportRisk = "green" | "yellow" | "red" | "gray";
+type SupportForecastDeal = {
+  executor: string; broker: string; client_obj: string; commission: number;
+  probability: string; risk_level: SupportRisk; crm_url: string; ext_stage: string;
+};
+type SupportSummary = {
+  total_amount: number; received_amount: number; plan_commission: number;
+  confirmed: number; at_risk_amount: number; red_amount: number;
+  total_deals: number; green_deals: number; yellow_deals: number; red_deals: number;
+};
+type SupportDealsResponse = {
+  month: string; sheet_title: string; months: string[];
+  summary: SupportSummary; deals: SupportForecastDeal[];
+};
+
 type SupportDeal = {
   id: number;
   client: string;
@@ -118,8 +133,6 @@ const NAV_ITEMS = [
   { key: "brokers",     label: "Расходы компании", icon: "💳" },
   { key: "team",        label: "Команда",         icon: "👥" },
   { key: "legal",       label: "Юр-риски",        icon: "⚖"  },
-  { key: "legal_processes", label: "Юр. процессы", icon: "§" },
-  { key: "competitors", label: "Рынок",            icon: "⊛"  },
 ];
 const DEPARTMENTS = NAV_ITEMS;
 
@@ -5115,8 +5128,104 @@ function DealsSection() {
   );
 }
 
+// ── Support Deals Section (Отдел сопровождения — зависшие/все) ───────────────
+const SUPPORT_RISK_DOT: Record<string, string> = { green: "#16a34a", yellow: "#d97706", red: "#dc2626", gray: "#cbd0d6" };
+const SUPPORT_RISK_LABEL: Record<string, string> = { green: "Высокая", yellow: "Средняя", red: "Низкая", gray: "—" };
+const SUPPORT_GRID = "10px 1fr 1fr 130px 90px";
+
+function SupportDealsSection() {
+  const [tab, setTab] = React.useState<"stuck" | "all">("stuck");
+  const [data, setData] = React.useState<SupportDealsResponse | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [executor, setExecutor] = React.useState<string>("");
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`${API}/api/support/deals`)
+      .then(r => { if (!r.ok) throw new Error("server"); return r.json(); })
+      .then(d => { if (!cancelled) setData(d); })
+      .catch(() => { if (!cancelled) setError("Нет соединения с сервером"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  const allDeals = data?.deals ?? [];
+  const executors = Array.from(new Set(allDeals.map(d => d.executor).filter(e => e && e !== "—")));
+  const scoped = executor ? allDeals.filter(d => d.executor === executor) : allDeals;
+  const deals = (tab === "stuck" ? scoped.filter(d => d.risk_level === "red") : scoped)
+    .slice()
+    .sort((a, b) => (b.commission || 0) - (a.commission || 0));
+
+  const headStyle: React.CSSProperties = { fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.4px" };
+
+  return (
+    <div>
+      {/* Вкладки + фильтр по сопровождающему */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {(["stuck", "all"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: "5px 14px", borderRadius: "var(--r-pill)", fontSize: 12, fontWeight: 500,
+              cursor: "pointer", fontFamily: "inherit", border: "1px solid",
+              borderColor: tab === t ? "var(--ink)" : "var(--border-strong)",
+              background: tab === t ? "var(--ink)" : "var(--surface)",
+              color: tab === t ? "var(--surface)" : "var(--ink-2)",
+              transition: "background var(--dur) var(--ease-out)",
+            }}>{t === "stuck" ? "Зависшие" : "Все сделки"}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select value={executor} onChange={e => setExecutor(e.target.value)} style={DEAL_SELECT_STYLE} disabled={loading || executors.length === 0}>
+            <option value="">Все сопровождающие</option>
+            {executors.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <button onClick={() => setExecutor("")} style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>сбросить</button>
+          <button onClick={() => setRefreshKey(k => k + 1)} style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>↻ обновить</button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", color: "var(--muted)", fontSize: 13, marginBottom: 32 }}>Загрузка из Google Sheets…</div>
+      ) : error ? (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", fontSize: 13, marginBottom: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ color: "var(--ink)", fontWeight: 500 }}>{error}</div>
+          <button onClick={() => setRefreshKey(k => k + 1)} style={{ fontSize: 12, color: "var(--ink-2)", background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: "var(--r-xs)", padding: "6px 14px", cursor: "pointer", fontFamily: "inherit" }}>Попробовать снова</button>
+        </div>
+      ) : deals.length === 0 ? (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 28, textAlign: "center", color: "var(--muted)", fontSize: 13, marginBottom: 32 }}>
+          {tab === "stuck" ? "Красных сделок нет" : "Сделок не найдено"}
+        </div>
+      ) : (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", marginBottom: 32 }}>
+          <div style={{ display: "grid", gridTemplateColumns: SUPPORT_GRID, gap: 16, padding: "9px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>
+            <div />
+            <div style={headStyle}>Клиент / объект</div>
+            <div style={headStyle}>Сопровождающий</div>
+            <div style={{ ...headStyle, textAlign: "right" }}>Комиссия</div>
+            <div style={{ ...headStyle, textAlign: "right" }}>Вероятность</div>
+          </div>
+          {deals.map((d, i) => (
+            <div key={`${d.crm_url}-${i}`} style={{ display: "grid", gridTemplateColumns: SUPPORT_GRID, gap: 16, padding: "11px 20px", borderBottom: i === deals.length - 1 ? "none" : "1px solid var(--border)", alignItems: "center", background: d.risk_level === "red" ? "var(--danger-soft)" : "transparent" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: SUPPORT_RISK_DOT[d.risk_level] || "var(--border-strong)" }} title={SUPPORT_RISK_LABEL[d.risk_level]} />
+              <div style={{ fontSize: 13, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.client_obj}>{d.client_obj || "—"}</div>
+              <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{d.executor || "—"}</div>
+              <div style={{ fontSize: 13, textAlign: "right", fontWeight: 500 }}>{d.commission > 0 ? `${d.commission.toLocaleString("ru-RU")} ₽` : "—"}</div>
+              <div style={{ fontSize: 12, textAlign: "right", color: d.risk_level === "red" ? "var(--danger)" : "var(--ink-2)" }}>{d.probability || "—"}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [supportSummary, setSupportSummary] = useState<SupportSummary | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("deals");
@@ -5142,6 +5251,15 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const fetchSupportSummary = async () => {
+    try {
+      const res = await fetch(`${API}/api/support/deals`);
+      if (!res.ok) throw new Error("server");
+      const data = await res.json();
+      setSupportSummary(data?.summary ?? null);
+    } catch { setSupportSummary(null); }
+  };
+
   const fetchDirections = async () => {
     try {
       const res = await fetch(`${API}/api/directions/`);
@@ -5151,7 +5269,7 @@ export default function Dashboard() {
     } catch { dirStore.list = []; }
   };
 
-  useEffect(() => { fetchTasks(); fetchDirections(); }, []);
+  useEffect(() => { fetchTasks(); fetchDirections(); fetchSupportSummary(); }, []);
 
   // Персональная настройка меню (порядок + скрытые разделы) — хранится в браузере
   useEffect(() => {
@@ -5296,7 +5414,8 @@ export default function Dashboard() {
   }
   const sortedDirections = dirOrder().filter(d => groupedTasks[d]);
 
-  const overdue = tasks.filter(t => t.deadline && t.deadline < today).length;
+  const riskCount = supportSummary ? supportSummary.red_deals : null;
+  const riskMoney = supportSummary ? supportSummary.red_amount : null;
 
   const orderedNav = navOrder.map(k => NAV_ITEMS.find(i => i.key === k)).filter(Boolean) as typeof NAV_ITEMS;
   const visibleNav = orderedNav.filter(i => !navHidden.includes(i.key));
@@ -5379,14 +5498,13 @@ export default function Dashboard() {
         {activeTab === "deals" && (
           <>
             {/* Риск-баннер */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 32 }}>
-              <StatCard label="Под риском" value="—" hint="комиссий без движения" />
-              <StatCard label="Зависших сделок" value="—" hint="требуют внимания" />
-              <StatCard label="Задач просрочено" value={overdue} hint={`из ${tasks.length} активных`} tone={overdue > 0 ? "danger" : "default"} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
+              <StatCard label="Под риском" value={riskMoney === null ? "—" : riskMoney > 0 ? `${fmt(riskMoney)} ₽` : "—"} hint="красные сделки сопровождения" tone={riskMoney && riskMoney > 0 ? "danger" : "default"} />
+              <StatCard label="Зависших сделок" value={riskCount === null ? "—" : riskCount} hint="требуют внимания" tone={riskCount && riskCount > 0 ? "danger" : "default"} />
             </div>
 
-            {/* Зависшие / Все сделки */}
-            <DealsSection />
+            {/* Зависшие / Все сделки — из Отдела сопровождения */}
+            <SupportDealsSection />
 
             {/* Задачи — шапка */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
