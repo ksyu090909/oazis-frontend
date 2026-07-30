@@ -132,7 +132,6 @@ const NAV_ITEMS = [
   { key: "motivation",  label: "Мотивация",       icon: "🎯" },
   { key: "brokers",     label: "Расходы компании", icon: "💳" },
   { key: "team",        label: "Команда",         icon: "👥" },
-  { key: "legal",       label: "Юр-риски",        icon: "⚖"  },
 ];
 const DEPARTMENTS = NAV_ITEMS;
 
